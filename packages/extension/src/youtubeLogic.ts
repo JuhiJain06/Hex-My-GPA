@@ -7,6 +7,14 @@ type StateMsg = Extract<DesktopToExt, { t: 'state' }>;
 export const VIDEO_ID = /^[A-Za-z0-9_-]{6,20}$/;
 export const PROMPT_TIMEOUT_MS = 30_000;
 export const REASK_MS = 5 * 60_000;
+export const REMINDER_MS = 8_000;
+const MAX_TOPIC = 80;
+
+/** "Back to <topic>?" shown after a no / timeout; generic when there is no topic. */
+export function reminderText(topic: string | null): string {
+  const t = (topic ?? '').trim().slice(0, MAX_TOPIC);
+  return t === '' ? 'Back to studying?' : `Back to ${t}?`;
+}
 
 function parseUrl(url: string): URL | null {
   try { return new URL(url); } catch { return null; }
@@ -50,12 +58,14 @@ export function setHideCss(doc: Document, on: boolean): void {
   (doc.head ?? doc.documentElement).appendChild(style);
 }
 
-type PromptPhase = 'idle' | 'asking' | 'waiting' | 'done';
+type PromptPhase = 'idle' | 'deferred' | 'asking' | 'waiting' | 'done';
 
 /**
  * Per-tab "Is this for study?" state for the current video.
  * asking: card visible, times out after 30 s; waiting: after a no/timeout, re-asks 5 min later;
  * done: answered yes (or known study video). Navigating to another video starts over.
+ * Asks only happen while `visible()`: a hidden tab defers the ask (deferred), and the 30 s window
+ * starts fresh when the tab is shown again, so nobody is timed out on a tab they can't see.
  */
 export class StudyPrompt {
   private video: string | null = null;
@@ -63,7 +73,7 @@ export class StudyPrompt {
   private since = 0; // asking: when shown; waiting: when the re-ask is due
   private readonly studied = new Set<string>();
 
-  constructor(private readonly clock: () => number) {}
+  constructor(private readonly clock: () => number, private readonly visible: () => boolean = () => true) {}
 
   onVideo(id: string | null, studyVideos: string[]): 'show' | 'none' {
     if (id === null || this.studied.has(id) || studyVideos.includes(id)) {
@@ -71,10 +81,20 @@ export class StudyPrompt {
       this.phase = id === null ? 'idle' : 'done';
       return 'none';
     }
-    if (id === this.video && this.phase !== 'idle') return this.phase === 'asking' ? 'show' : 'none';
+    if (id === this.video && this.phase !== 'idle') return this.onVisibility();
     this.video = id;
-    this.ask();
-    return 'show';
+    this.phase = 'deferred';
+    return this.onVisibility();
+  }
+
+  /** Call on visibilitychange: hidden defers an open ask; visible starts a deferred/due one. */
+  onVisibility(): 'show' | 'none' {
+    if (!this.visible()) {
+      if (this.phase === 'asking') this.phase = 'deferred';
+      return 'none';
+    }
+    if (this.phase === 'deferred' || (this.phase === 'waiting' && this.clock() >= this.since)) this.ask();
+    return this.phase === 'asking' ? 'show' : 'none';
   }
 
   answer(study: boolean): { slip: 'youtube-not-study' } | { study: string } {
@@ -89,7 +109,12 @@ export class StudyPrompt {
   }
 
   tick(): 'timeout' | 'reask' | null {
+    if (!this.visible()) {
+      if (this.phase === 'asking') this.phase = 'deferred';
+      return null;
+    }
     const now = this.clock();
+    if (this.phase === 'deferred') { this.ask(); return 'reask'; }
     if (this.phase === 'asking' && now - this.since >= PROMPT_TIMEOUT_MS) { this.arm(); return 'timeout'; }
     if (this.phase === 'waiting' && now >= this.since) { this.ask(); return 'reask'; }
     return null;
@@ -114,6 +139,12 @@ export interface PromptCard {
   visible(): boolean;
   text(): string;
   remove(): void;
+  dismiss: HTMLButtonElement;
+  /** Shows the non-blocking "Back to <topic>?" note; auto-dismisses after REMINDER_MS. */
+  remind(topic: string | null): void;
+  hideReminder(): void;
+  reminderVisible(): boolean;
+  reminderText(): string;
 }
 
 const CARD_CSS = `
@@ -124,7 +155,9 @@ const CARD_CSS = `
 .card[hidden] { display: none; }
 button { font: inherit; cursor: pointer; border: 0; border-radius: 6px; padding: 4px 12px; }
 .yes { background: #22c55e; color: #052e16; }
-.no { background: #4b5563; color: #f9fafb; }`;
+.no { background: #4b5563; color: #f9fafb; }
+.remind { background: #1e3a8a; }
+.x { background: transparent; color: #f9fafb; padding: 0 4px; font-size: 16px; line-height: 1; }`;
 
 /** A small fixed bottom-left card in a closed shadow root. Static text only; never touches the video. */
 export function mountPromptCard(doc: Document, onAnswer: (study: boolean) => void): PromptCard {
@@ -147,14 +180,46 @@ export function mountPromptCard(doc: Document, onAnswer: (study: boolean) => voi
   yes.addEventListener('click', (e) => { e.stopPropagation(); onAnswer(true); });
   no.addEventListener('click', (e) => { e.stopPropagation(); onAnswer(false); });
   card.append(label, yes, no);
-  root.append(style, card);
+
+  const reminder = doc.createElement('div');
+  reminder.className = 'card remind';
+  reminder.hidden = true;
+  reminder.setAttribute('role', 'status');
+  const remindLabel = doc.createElement('span');
+  const dismiss = doc.createElement('button');
+  dismiss.className = 'x';
+  dismiss.textContent = '×';
+  dismiss.setAttribute('aria-label', 'Dismiss');
+  reminder.append(remindLabel, dismiss);
+
+  const win = doc.defaultView ?? globalThis;
+  let remindTimer: ReturnType<typeof setTimeout> | null = null;
+  const hideReminder = (): void => {
+    if (remindTimer !== null) { win.clearTimeout(remindTimer); remindTimer = null; }
+    reminder.hidden = true;
+  };
+  dismiss.addEventListener('click', (e) => { e.stopPropagation(); hideReminder(); });
+
+  root.append(style, card, reminder);
   doc.documentElement.appendChild(host);
+  const attach = (): void => { if (!host.isConnected) doc.documentElement.appendChild(host); }; // YouTube may rebuild the DOM
   return {
-    host, yes, no,
+    host, yes, no, dismiss,
     show: () => {
-      if (!host.isConnected) doc.documentElement.appendChild(host); // YouTube may rebuild the DOM
+      attach();
+      hideReminder();
       card.hidden = false;
     },
+    remind: (topic) => {
+      attach();
+      hideReminder();
+      remindLabel.textContent = reminderText(topic);
+      reminder.hidden = false;
+      remindTimer = win.setTimeout(hideReminder, REMINDER_MS);
+    },
+    hideReminder,
+    reminderVisible: () => !reminder.hidden,
+    reminderText: () => remindLabel.textContent ?? '',
     hide: () => { card.hidden = true; },
     visible: () => !card.hidden,
     text: () => card.textContent ?? '',

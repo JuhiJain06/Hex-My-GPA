@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import {
-  HIDE_CSS, StudyPrompt, isShorts, mountPromptCard, parseYtMessage, setHideCss, videoIdOf, ytStateFor,
+  HIDE_CSS, REMINDER_MS, StudyPrompt, isShorts, reminderText, mountPromptCard, parseYtMessage, setHideCss, videoIdOf, ytStateFor,
 } from '../src/youtubeLogic';
 
 const SEC = 1000;
@@ -170,4 +170,98 @@ test('content-script messages are validated by sender, reason and shape', () => 
   expect(parseYtMessage({ type: 'yt-slip', reason: 'youtube-timeout', target: 'youtube.com/shorts' }, ok)).toBeNull();
   expect(parseYtMessage(null, ok)).toBeNull();
   expect(parseYtMessage({ type: 'nope' }, ok)).toBeNull();
+});
+
+afterEach(() => { vi.useRealTimers(); });
+
+test('reminder text uses the topic, else a generic line', () => {
+  expect(reminderText('Calculus')).toBe('Back to Calculus?');
+  expect(reminderText('  Organic chem  ')).toBe('Back to Organic chem?');
+  expect(reminderText(null)).toBe('Back to studying?');
+  expect(reminderText('   ')).toBe('Back to studying?');
+  expect(reminderText('x'.repeat(500)).length).toBeLessThanOrEqual(90);
+});
+
+test('reminder card: textContent only, dismiss button, auto-dismiss after ~8 s', () => {
+  vi.useFakeTimers();
+  const card = mountPromptCard(document, () => {});
+  expect(card.reminderVisible()).toBe(false);
+  const evil = '<img src=x onerror="alert(1)">';
+  card.remind(evil);
+  expect(card.reminderVisible()).toBe(true);
+  expect(card.reminderText()).toBe(`Back to ${evil}?`); // literal text, not markup
+  expect(document.querySelector('img')).toBeNull();
+  vi.advanceTimersByTime(REMINDER_MS - 1);
+  expect(card.reminderVisible()).toBe(true);
+  vi.advanceTimersByTime(1);
+  expect(card.reminderVisible()).toBe(false);
+
+  card.remind(null);
+  expect(card.reminderText()).toBe('Back to studying?');
+  card.dismiss.click();
+  expect(card.reminderVisible()).toBe(false);
+
+  // a second remind restarts the 8 s window; hideReminder clears it
+  card.remind('A');
+  vi.advanceTimersByTime(REMINDER_MS - 1000);
+  card.remind('B');
+  vi.advanceTimersByTime(2000);
+  expect(card.reminderVisible()).toBe(true);
+  expect(card.reminderText()).toBe('Back to B?');
+  card.hideReminder();
+  expect(card.reminderVisible()).toBe(false);
+  card.remove();
+});
+
+test('prompt only asks and times out while the tab is visible', () => {
+  const c = fakeClock();
+  let visible = false;
+  const p = new StudyPrompt(c.now, () => visible);
+
+  // a video opened in a background tab is deferred: no card, no timeout however long
+  expect(p.onVideo('bgvid1234', [])).toBe('none');
+  c.advance(10 * MIN);
+  expect(p.tick()).toBeNull();
+
+  // becoming visible starts a fresh 30 s window
+  visible = true;
+  expect(p.onVisibility()).toBe('show');
+  c.advance(30 * SEC - 1);
+  expect(p.tick()).toBeNull();
+
+  // hidden mid-ask: deferred again, no timeout; visible again restarts the window
+  visible = false;
+  expect(p.onVisibility()).toBe('none');
+  c.advance(5 * MIN);
+  expect(p.tick()).toBeNull();
+  visible = true;
+  expect(p.onVisibility()).toBe('show');
+  c.advance(29 * SEC);
+  expect(p.tick()).toBeNull();
+  c.advance(1 * SEC);
+  expect(p.tick()).toBe('timeout');
+
+  // even without a visibilitychange event, a tick while hidden never times out
+  c.advance(5 * MIN);
+  expect(p.tick()).toBe('reask');
+  visible = false;
+  c.advance(60 * SEC);
+  expect(p.tick()).toBeNull();
+  // re-ask due while hidden waits for visibility
+  visible = true;
+  expect(p.onVisibility()).toBe('show');
+  expect(p.answer(false)).toEqual({ slip: 'youtube-not-study' });
+  visible = false;
+  c.advance(6 * MIN);
+  expect(p.tick()).toBeNull();
+  expect(p.onVisibility()).toBe('none');
+  visible = true;
+  expect(p.tick()).toBe('reask'); // the ticker also picks it up once visible
+  c.advance(30 * SEC);
+  expect(p.tick()).toBe('timeout');
+
+  // answering is only possible on a shown prompt
+  expect(() => p.answer(true)).toThrow();
+  // onVisibility with nothing pending is a no-op
+  expect(p.onVisibility()).toBe('none');
 });

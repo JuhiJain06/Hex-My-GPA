@@ -9,7 +9,8 @@ const TICK_MS = 1000;
 const RECONNECT_MS = 1000;
 
 let state: YtState = { blocking: false, topic: null, studyVideos: [] };
-const prompt = new StudyPrompt(() => Date.now());
+// Asks start/time out only while this tab is visible (no slips for tabs nobody is looking at).
+const prompt = new StudyPrompt(() => Date.now(), () => document.visibilityState === 'visible');
 let card: PromptCard | null = null;
 let ticker: ReturnType<typeof setInterval> | null = null;
 let leaving = false; // redirecting away from Shorts: report once
@@ -30,7 +31,10 @@ function onAnswer(study: boolean): void {
   try { res = prompt.answer(study); } catch { card?.hide(); return; } // stale click
   card?.hide();
   if ('study' in res) post({ type: 'yt-study', videoId: res.study });
-  else post({ type: 'yt-slip', reason: res.slip, target: 'youtube.com' });
+  else {
+    post({ type: 'yt-slip', reason: res.slip, target: 'youtube.com' });
+    getCard().remind(state.topic);
+  }
 }
 
 function onTick(): void {
@@ -38,6 +42,7 @@ function onTick(): void {
   if (r === 'timeout') {
     card?.hide();
     post({ type: 'yt-slip', reason: 'youtube-timeout', target: 'youtube.com' });
+    getCard().remind(state.topic);
   } else if (r === 'reask') {
     getCard().show();
   }
@@ -53,6 +58,7 @@ function evaluate(): void {
     setHideCss(document, false);
     prompt.reset();
     card?.hide();
+    card?.hideReminder();
     stopTicker();
     return;
   }
@@ -98,4 +104,9 @@ function connectPort(): void {
 // YouTube is an SPA: yt-navigate-finish fires after in-app navigations; popstate for back/forward.
 document.addEventListener('yt-navigate-finish', evaluate);
 window.addEventListener('popstate', evaluate);
+document.addEventListener('visibilitychange', () => {
+  if (!state.blocking) return;
+  if (prompt.onVisibility() === 'show') getCard().show();
+  else card?.hide();
+});
 connectPort();
