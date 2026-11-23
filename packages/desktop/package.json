@@ -1,0 +1,21 @@
+{
+  "name": "@study-buddy/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@study-buddy/core": "*",
+    "get-windows": "^10.0.0",
+    "sql.js": "^1.17.0",
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/sql.js": "^1.16.0",
+    "@types/ws": "^8.18.2",
+    "electron": "^45.4.1"
+  }
+}
