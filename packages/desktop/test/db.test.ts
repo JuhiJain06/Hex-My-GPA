@@ -121,3 +121,15 @@ describe('db', () => {
     expect(calls).toBe(5);
   });
 });
+
+describe('hasSavedSettings', () => {
+  test('false on a fresh db, true after saveSettings, and persists across reopen', async () => {
+    const db = await openDb(file);
+    expect(db.hasSavedSettings()).toBe(false);
+    db.getSecret(); // other keys do not count
+    expect(db.hasSavedSettings()).toBe(false);
+    db.saveSettings(DEFAULT_SETTINGS);
+    expect(db.hasSavedSettings()).toBe(true);
+    expect((await openDb(file)).hasSavedSettings()).toBe(true);
+  });
+});

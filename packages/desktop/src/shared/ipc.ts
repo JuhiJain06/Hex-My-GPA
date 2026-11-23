@@ -26,6 +26,8 @@ export const IPC = {
   reflectionSave: 'reflection:save',
   settingsGet: 'settings:get',
   settingsSave: 'settings:save',
+  /** R→M invoke: the extension pairing code; only answered to our own file:// windows. */
+  settingsSecret: 'settings:secret',
   historyGet: 'history:get',
   summaryGet: 'summary:get',
   soundMute: 'sound:mute',
@@ -102,3 +104,6 @@ export interface BuddyApi {
   invoke<T = unknown>(channel: Channel, payload?: unknown): Promise<T>;
   on(channel: Channel, listener: (payload: unknown) => void): () => void;
 }
+
+/** Reply of `settings:save`. */
+export type SettingsSaveResult = { ok: true; settings: import('@study-buddy/core').Settings } | { ok: false; error: string };

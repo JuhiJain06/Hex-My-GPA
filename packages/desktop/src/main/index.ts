@@ -194,6 +194,7 @@ async function main(): Promise<void> {
       guard.answerOffer(exe, choice);
     },
     dismissOverlay: () => { log('overlay dismissed'); guard.dismissOverlay(); },
+    onSettingsSaved: () => { log('settings saved'); broadcastState(); },
   });
 
   app.on('second-instance', () => (ctrl.sessionId !== null ? showSessionWindows(false) : showWindow('start')));
@@ -270,6 +271,14 @@ async function main(): Promise<void> {
     showSessionWindows(true);
   } else {
     showWindow('start');
+  }
+
+  // First launch (settings never saved): open Settings at the pairing code, then save the defaults
+  // once so later launches don't open it again.
+  if (!db.hasSavedSettings()) {
+    log('first launch → settings at pairing');
+    showWindow('settings', { query: { pair: '1' }, focus: true });
+    db.saveSettings(db.getSettings());
   }
   tray.refresh();
 

@@ -7,7 +7,8 @@ import { parseOfferAnswer, parsePromptAnswer } from './appGuard';
 import { summarize } from '@study-buddy/core';
 import { buildHistory } from './history';
 import { parseReflection } from './reflection';
-import { IPC, type HistoryView, type OfferAnswerMsg, type StartRequest, type SummaryView, type WindowName } from '../shared/ipc';
+import { parseSettings } from './settingsValidate';
+import { IPC, type HistoryView, type OfferAnswerMsg, type SettingsSaveResult, type StartRequest, type SummaryView, type WindowName } from '../shared/ipc';
 
 const DAY_MS = 86_400_000;
 
@@ -26,6 +27,8 @@ export interface IpcDeps {
   onPromptAnswer(exe: string, study: boolean): void;
   /** Unlisted-app offer answer (already validated). */
   onOfferAnswer(exe: string, choice: OfferAnswerMsg['choice']): void;
+  /** Called after validated settings were saved (rebroadcast lists to the bridge). */
+  onSettingsSaved(): void;
   /** The overlay's button: hide the overlay. */
   dismissOverlay(): void;
 }
@@ -66,6 +69,14 @@ export function registerIpc(deps: IpcDeps): void {
   const { ctrl, db, onStarted, endSession, onCheckinAnswer, focusCheckin } = deps;
   handle(IPC.state, () => ctrl.uiState());
   handle(IPC.settingsGet, () => db.getSettings());
+  handle(IPC.settingsSecret, () => db.getSecret());
+  handle(IPC.settingsSave, (p): SettingsSaveResult => {
+    const r = parseSettings(p, db.getSettings());
+    if ('error' in r) return { ok: false, error: r.error };
+    db.saveSettings(r);
+    deps.onSettingsSaved();
+    return { ok: true, settings: r };
+  });
   handle(IPC.sessionStart, (p) => {
     const req = parseStart(p);
     if (!req) return { ok: false, error: 'Please enter a topic.' };

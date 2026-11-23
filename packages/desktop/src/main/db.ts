@@ -20,6 +20,8 @@ export interface Reflection {
 export interface Db {
   getSettings(): Settings;
   saveSettings(s: Settings): void;
+  /** True once settings have been saved at least once (false on a fresh data dir). */
+  hasSavedSettings(): boolean;
   getSecret(): string;
   createSession(info: SessionInfo): number;
   saveSnapshot(id: number, snap: EngineState, now: number): void;
@@ -131,6 +133,9 @@ export async function openDb(filePath: string, opts: OpenDbOptions = {}): Promis
     saveSettings(s) {
       setSetting('settings', JSON.stringify(s));
       persist();
+    },
+    hasSavedSettings() {
+      return getSetting('settings') !== null;
     },
     getSecret() {
       let s = getSetting('secret');

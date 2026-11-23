@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Settings</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    html, body { height: auto; min-height: 100%; }
+    body { padding: 22px 24px 84px; overflow-y: auto; }
+    h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+    h2 { font-size: 14px; margin: 26px 0 6px; font-weight: 600; }
+    p { margin: 4px 0 8px; }
+    .note { color: var(--muted); font-size: 12px; }
+    label { display: block; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
+    textarea { font: 13px/1.4 Consolas, "Cascadia Mono", monospace; color: var(--text); background: var(--panel);
+      border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; height: 96px;
+      resize: vertical; user-select: text; white-space: pre; overflow: auto; }
+    textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .cols { display: flex; gap: 10px; }
+    .cols > div { flex: 1; min-width: 0; }
+    code { font-family: Consolas, "Cascadia Mono", monospace; user-select: text; }
+    #code { font-family: Consolas, "Cascadia Mono", monospace; letter-spacing: 0.5px; }
+    .row { display: flex; gap: 8px; }
+    section.focus { outline: 2px solid var(--accent); outline-offset: 8px; border-radius: 6px; }
+    ol { margin: 6px 0; padding-left: 20px; }
+    li { margin: 2px 0; }
+    footer { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px;
+      padding: 12px 24px; background: var(--bg); border-top: 1px solid var(--line); }
+    #error { flex: 1; color: var(--danger); font-size: 13px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <h1>Settings</h1>
+  <p class="note">One entry per line. Changes to lists apply right away; the rhythm applies from your next session.</p>
+
+  <section id="sites">
+    <h2>Sites</h2>
+    <p class="note">Claude, NotebookLM and Gemini are always allowed.</p>
+    <div class="cols">
+      <div><label for="sites-fine">Fine</label><textarea id="sites-fine" spellcheck="false" wrap="off"></textarea></div>
+      <div><label for="sites-gray">Gray (ask)</label><textarea id="sites-gray" spellcheck="false" wrap="off"></textarea></div>
+      <div><label for="sites-hard">Hard (blocked)</label><textarea id="sites-hard" spellcheck="false" wrap="off"></textarea></div>
+    </div>
+  </section>
+
+  <section id="apps">
+    <h2>Apps</h2>
+    <p class="note">Program file names, like notepad.exe.</p>
+    <div class="cols">
+      <div><label for="apps-fine">Fine</label><textarea id="apps-fine" spellcheck="false" wrap="off"></textarea></div>
+      <div><label for="apps-gray">Gray (ask)</label><textarea id="apps-gray" spellcheck="false" wrap="off"></textarea></div>
+      <div><label for="apps-hard">Hard (blocked)</label><textarea id="apps-hard" spellcheck="false" wrap="off"></textarea></div>
+    </div>
+  </section>
+
+  <section id="rhythm">
+    <h2>Rhythm</h2>
+    <p class="note">Applies from the next session.</p>
+    <div class="cols">
+      <div><label for="focusMin">Focus (min)</label><input id="focusMin" type="number" min="1" max="180" step="1"></div>
+      <div><label for="shortBreakMin">Short break (min)</label><input id="shortBreakMin" type="number" min="1" max="180" step="1"></div>
+      <div><label for="longBreakMin">Long break (min)</label><input id="longBreakMin" type="number" min="1" max="180" step="1"></div>
+      <div><label for="longBreakEvery">Long break every</label><input id="longBreakEvery" type="number" min="1" max="10" step="1"></div>
+    </div>
+  </section>
+
+  <section id="streak">
+    <h2>Streak minimum</h2>
+    <p class="note">Minutes of focus in a day that count toward your streak.</p>
+    <div class="cols"><div><label for="streakMin">Minutes (1 to 1440)</label><input id="streakMin" type="number" min="1" max="1440" step="1"></div><div></div><div></div></div>
+  </section>
+
+  <section id="sound">
+    <h2>Sound</h2>
+    <p class="note">Sound is configured from the mini window.</p>
+  </section>
+
+  <section id="pairing">
+    <h2>Browser extension</h2>
+    <p>Paste this pairing code into the extension's options page to connect it.</p>
+    <div class="row">
+      <input id="code" type="text" readonly spellcheck="false" aria-label="Pairing code">
+      <button id="copy" type="button">Copy</button>
+    </div>
+    <p id="copyMsg" class="note" role="status"></p>
+    <h2>Incognito</h2>
+    <p>Incognito windows aren't blocked or reported until you allow the extension there:</p>
+    <ol>
+      <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code> in Edge) in the address bar.</li>
+      <li>Find Study Buddy and click <strong>Details</strong>.</li>
+      <li>Turn on <strong>Allow in Incognito</strong>.</li>
+      <li>Open the extension's options page and click Re-check.</li>
+    </ol>
+  </section>
+
+  <footer>
+    <div id="error" role="alert"></div>
+    <button id="cancel" type="button">Cancel</button>
+    <button id="save" type="button" class="primary">Save</button>
+  </footer>
+  <script src="settings.js"></script>
+</body>
+</html>

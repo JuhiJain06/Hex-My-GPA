@@ -97,7 +97,12 @@ defineWindow('history', {
   options: () => ({ width: 560, height: 560, resizable: false, title: 'History' }),
 });
 
-const base = (): BrowserWindowConstructorOptions => ({
+defineWindow('settings', {
+  html: 'settings',
+  options: () => ({ width: 640, height: 700, minWidth: 520, minHeight: 400, title: 'Settings' }),
+});
+
+const base = ():BrowserWindowConstructorOptions => ({
   show: false,
   autoHideMenuBar: true,
   backgroundColor: '#1d1f24',
