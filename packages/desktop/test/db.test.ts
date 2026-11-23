@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_SETTINGS, type EngineState, type SessionInfo } from '@study-buddy/core';
+import { renameSync } from 'node:fs';
 import { openDb } from '../src/main/db';
 
 const M = 60_000;
@@ -79,5 +80,44 @@ describe('db', () => {
     ]);
     expect(re.reflections(0)).toEqual([{ at: 9000, tags: ['tired', 'noisy'] }]);
     expect(re.reflections(9001)).toEqual([]);
+  });
+  test('nested settings merge fills missing nested defaults and keeps saved values', async () => {
+    const db = await openDb(file);
+    const old = {
+      rhythm: { focusMin: 30, shortBreakMin: 5, longBreakMin: 20 },
+      sound: { ambient: 'rain', ambientVolume: 0.9, freq: null },
+      sites: { hard: ['foo.com'] },
+    };
+    db.saveSettings(old as unknown as typeof DEFAULT_SETTINGS);
+    const s = (await openDb(file)).getSettings();
+    expect(s.rhythm).toEqual({ ...DEFAULT_SETTINGS.rhythm, focusMin: 30, shortBreakMin: 5, longBreakMin: 20 });
+    expect(s.rhythm.longBreakEvery).toBe(DEFAULT_SETTINGS.rhythm.longBreakEvery);
+    expect(s.sound).toEqual({ ...DEFAULT_SETTINGS.sound, ambient: 'rain', ambientVolume: 0.9 });
+    expect(s.sound.freqVolume).toBe(DEFAULT_SETTINGS.sound.freqVolume);
+    expect(s.sites.hard).toEqual(['foo.com']);
+    expect(s.sites.fine).toEqual(DEFAULT_SETTINGS.sites.fine);
+    expect(s.apps).toEqual(DEFAULT_SETTINGS.apps);
+  });
+
+  test('persist retries rename on transient EBUSY then succeeds', async () => {
+    let calls = 0;
+    const flaky = (from: string, to: string): void => {
+      if (++calls <= 2) throw Object.assign(new Error('busy'), { code: 'EBUSY' });
+      renameSync(from, to);
+    };
+    const db = await openDb(file, { rename: flaky });
+    expect(calls).toBe(3);
+    calls = 100;
+    db.saveSettings({ ...DEFAULT_SETTINGS, streakMinMinutes: 55 });
+    expect((await openDb(file)).getSettings().streakMinMinutes).toBe(55);
+  });
+
+  test('persist rethrows non-transient errors and exhausted retries', async () => {
+    const enoent = () => { throw Object.assign(new Error('x'), { code: 'ENOENT' }); };
+    await expect(openDb(file, { rename: enoent })).rejects.toThrow('x');
+    let calls = 0;
+    const always = () => { calls++; throw Object.assign(new Error('busy'), { code: 'EBUSY' }); };
+    await expect(openDb(file, { rename: always })).rejects.toThrow('busy');
+    expect(calls).toBe(5);
   });
 });

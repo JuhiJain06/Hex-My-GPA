@@ -63,7 +63,34 @@ function merge<T>(base: T, over: unknown): T {
   return out as T;
 }
 
-export async function openDb(filePath: string): Promise<Db> {
+const TRANSIENT = new Set(['EPERM', 'EBUSY', 'EACCES']);
+const RENAME_ATTEMPTS = 5;
+const RENAME_DELAY_MS = 50;
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Rename, retrying briefly on transient Windows locks (antivirus/indexer). */
+function renameWithRetry(rename: (from: string, to: string) => void, from: string, to: string): void {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      rename(from, to);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (attempt >= RENAME_ATTEMPTS || !code || !TRANSIENT.has(code)) throw err;
+      sleepSync(RENAME_DELAY_MS);
+    }
+  }
+}
+
+export interface OpenDbOptions {
+  /** Test seam: replaces fs.renameSync. */
+  rename?: (from: string, to: string) => void;
+}
+
+export async function openDb(filePath: string, opts: OpenDbOptions = {}): Promise<Db> {
   const SQL = await initSqlJs();
   const db: Database = existsSync(filePath) ? new SQL.Database(readFileSync(filePath)) : new SQL.Database();
   db.run(SCHEMA);
@@ -71,7 +98,7 @@ export async function openDb(filePath: string): Promise<Db> {
   const persist = (): void => {
     const tmp = filePath + '.tmp';
     writeFileSync(tmp, db.export());
-    renameSync(tmp, filePath);
+    renameWithRetry(opts.rename ?? renameSync, tmp, filePath);
   };
   const run = (sql: string, params: Param[] = []): void => { db.run(sql, params); };
   const all = (sql: string, params: Param[] = []): Record<string, Param>[] => {
