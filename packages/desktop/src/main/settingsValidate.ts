@@ -5,7 +5,7 @@ export const ALWAYS_FINE_SITES: readonly string[] = ['claude.ai', 'notebooklm.go
 
 const MAX_ENTRIES = 500;
 const MAX_LEN = 253;
-const SITE_RE = /^[a-z0-9.-]+$/;
+const SITE_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
 const APP_RE = /^[a-z0-9 _.-]+\.exe$/;
 const AMBIENT = ['none', 'rain', 'brown', 'cafe'];
 const LISTS = ['fine', 'gray', 'hard'] as const;
@@ -30,7 +30,7 @@ function parseList(raw: unknown, label: string, kind: 'site' | 'app'): string[] 
     if (!v) continue;
     if (kind === 'site') v = normalizeSite(v);
     if (v.length > MAX_LEN) return { error: `${label}: "${v.slice(0, 30)}…" is longer than ${MAX_LEN} characters.` };
-    if (kind === 'site' ? !(SITE_RE.test(v) && v.includes('.')) : !APP_RE.test(v)) {
+    if (kind === 'site' ? !SITE_RE.test(v) : !APP_RE.test(v)) {
       return { error: kind === 'site'
         ? `${label}: "${v}" doesn't look like a website (for example example.com).`
         : `${label}: "${v}" doesn't look like an app (for example notepad.exe).` };
@@ -106,8 +106,9 @@ export function parseSettings(input: unknown, current: Settings): Settings | Fai
     sound = s;
   }
   const always = new Set(ALWAYS_FINE_SITES);
+  const protectedSite = (d: string) => ALWAYS_FINE_SITES.some((p) => d === p || d.endsWith('.' + p));
   sites.fine = [...ALWAYS_FINE_SITES, ...sites.fine.filter((d) => !always.has(d))];
-  sites.gray = sites.gray.filter((d) => !always.has(d));
-  sites.hard = sites.hard.filter((d) => !always.has(d));
+  sites.gray = sites.gray.filter((d) => !protectedSite(d));
+  sites.hard = sites.hard.filter((d) => !protectedSite(d));
   return { rhythm, streakMinMinutes: input.streakMinMinutes, sites, apps, sound };
 }

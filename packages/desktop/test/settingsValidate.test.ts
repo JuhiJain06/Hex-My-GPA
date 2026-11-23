@@ -43,13 +43,13 @@ describe('parseSettings: lists', () => {
     expect(ok(sites(['https://www.Example.com/a/b?q=1', 'http://foo.org/', 'www.bar.net'])).sites.hard)
       .toEqual(['example.com', 'foo.org', 'bar.net']);
   });
-  test.each(['nodots', 'bad domain.com', 'a_b.com', 'exa$mple.com', 'localhost'])('rejects site %j', (v) =>
+  test.each(['nodots', '.', '.com', 'a..com', '-a.com', 'a-.com', '-.-', 'bad domain.com', 'a_b.com', 'exa$mple.com', 'localhost'])('rejects site %j', (v) =>
     expect(err(sites([v]))).toContain(v.toLowerCase()));
   test('rejects an entry longer than 253 chars', () => {
     expect(err(sites(['a'.repeat(250) + '.com']))).toMatch(/253/);
   });
   test('accepts exactly 253 chars', () => {
-    const d = 'a'.repeat(249) + '.com';
+    const d = [...Array(4)].map(() => 'a'.repeat(60)).join('.') + '.' + 'b'.repeat(9);
     expect(d.length).toBe(253);
     expect(ok(sites([d])).sites.hard).toEqual([d]);
   });
@@ -79,6 +79,14 @@ describe('parseSettings: never-interrupt rule', () => {
     expect(s.sites.hard).toEqual(['x.com']);
     expect(s.sites.gray).toEqual(['youtube.com']);
     expect(s.sites.fine).toEqual(expect.arrayContaining([...ALWAYS_FINE_SITES]));
+  });
+  test('subdomains of protected sites are stripped from gray and hard', () => {
+    const s = ok(sites(['x.claude.ai', 'foo.gemini.google.com', 'a.b.notebooklm.google.com', 'x.com'], ['x.claude.ai', 'google.com', 'notclaude.ai']));
+    expect(s.sites.hard).toEqual(['x.com']);
+    expect(s.sites.gray).toEqual(['google.com', 'notclaude.ai']);
+  });
+  test('accepts a normal multi-label domain', () => {
+    expect(ok(sites(['sub.example.co.uk'])).sites.hard).toEqual(['sub.example.co.uk']);
   });
   test('no duplicates in fine when already listed', () => {
     const s = ok(sites([], [], ['claude.ai', 'foo.com']));
