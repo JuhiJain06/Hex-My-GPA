@@ -1,0 +1,40 @@
+import { expect, test } from 'vitest';
+import { parseDesktopMessage } from '../src/messages';
+
+const state = {
+  t: 'state', phase: 'focus', blocking: true, topic: 'Calculus', phaseEndsAt: 1700000000000,
+  sites: { fine: ['khanacademy.org'], gray: ['youtube.com'], hard: ['instagram.com'] }, studyVideos: ['abc123'],
+};
+
+test('parses helloAck', () => {
+  expect(parseDesktopMessage('{"t":"helloAck","ok":true}')).toEqual({ t: 'helloAck', ok: true });
+  expect(parseDesktopMessage('{"t":"helloAck","ok":false}')).toEqual({ t: 'helloAck', ok: false });
+  expect(parseDesktopMessage('{"t":"helloAck","ok":"yes"}')).toBeNull();
+});
+
+test('parses a full state and copies only known fields', () => {
+  expect(parseDesktopMessage(JSON.stringify({ ...state, extra: 1 }))).toEqual(state);
+  expect(parseDesktopMessage(JSON.stringify({ ...state, topic: null, phaseEndsAt: null, phase: 'idle', blocking: false })))
+    .toMatchObject({ topic: null, phaseEndsAt: null, phase: 'idle' });
+});
+
+test('rejects malformed state', () => {
+  const bad = [
+    { ...state, phase: 'nap' },
+    { ...state, blocking: 1 },
+    { ...state, topic: 3 },
+    { ...state, phaseEndsAt: 'soon' },
+    { ...state, phaseEndsAt: [1] },
+    { ...state, sites: null },
+    { ...state, sites: { fine: [], gray: [] } },
+    { ...state, sites: { fine: [], gray: [1], hard: [] } },
+    { ...state, studyVideos: 'abc' },
+    { ...state, studyVideos: [null] },
+  ];
+  for (const b of bad) expect(parseDesktopMessage(JSON.stringify(b))).toBeNull();
+  expect(parseDesktopMessage(JSON.stringify(state).replace('1700000000000', '1e999'))).toBeNull(); // Infinity
+});
+
+test('rejects garbage', () => {
+  for (const raw of ['', 'not json', 'null', '[]', '42', '{"t":"ping"}', '{}']) expect(parseDesktopMessage(raw)).toBeNull();
+});

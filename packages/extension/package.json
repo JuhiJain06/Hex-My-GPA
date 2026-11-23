@@ -1,0 +1,16 @@
+{
+  "name": "@study-buddy/extension",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@study-buddy/core": "*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.7"
+  }
+}
