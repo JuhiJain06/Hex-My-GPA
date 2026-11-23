@@ -1,4 +1,5 @@
 import { globalShortcut } from 'electron';
+import { SharedHotkey } from './sharedHotkey';
 
 /**
  * Named global shortcuts. Later tasks bind keys only while a prompt is visible
@@ -26,3 +27,9 @@ export function unbindAllHotkeys(): void {
   globalShortcut.unregisterAll();
   bound.clear();
 }
+
+/** Ctrl+Alt+Y ("yes"), shared by the check-in and the gray-app prompt: the newest visible one answers. */
+export const ctrlAltY = new SharedHotkey(
+  (fire) => bindHotkey('shared-y', 'Control+Alt+Y', fire),
+  () => unbindHotkey('shared-y'),
+);

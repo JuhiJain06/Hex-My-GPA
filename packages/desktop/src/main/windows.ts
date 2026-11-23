@@ -153,6 +153,19 @@ export function focusWindow(name: WindowName): void {
   w.focus();
 }
 
+/**
+ * Puts a small prompt window above the block overlay: same 'screen-saver' level, then raised.
+ * The overlay is full-screen at that level, so without this it would cover pending prompts.
+ */
+export function raiseAboveOverlay(win: BrowserWindow | null): void {
+  if (!win || win.isDestroyed()) return;
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.moveTop();
+}
+
+/** The windows that must stay clickable while the overlay is up. */
+export const ABOVE_OVERLAY: readonly WindowName[] = ['checkin', 'prompt', 'offer'];
+
 export function closeWindow(name: WindowName): void {
   getWindow(name)?.close();
 }

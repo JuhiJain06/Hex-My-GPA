@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { DEFAULT_SETTINGS, type BuddyEvent, type Lists } from '@study-buddy/core';
 import { openDb, type Db } from '../src/main/db';
 import { SessionController } from '../src/main/controller';
-import { AppGuard, parseOfferAnswer, parsePromptAnswer, type GuardUi } from '../src/main/appGuard';
+import { AppGuard, BROWSER_LABEL, parseOfferAnswer, parsePromptAnswer, type GuardUi } from '../src/main/appGuard';
+import { SharedHotkey } from '../src/main/sharedHotkey';
 
 const S = 1000;
 const M = 60_000;
@@ -294,6 +295,46 @@ describe('AppGuard', () => {
   });
 });
 
+describe('AppGuard overlay dismiss', () => {
+  test('dismissed overlay re-arms within 5 s while the hard app stays in front; not after switching away', () => {
+    start();
+    guard.onForeground(fg('steam.exe'));
+    expect(overlayUp()).toBe(true);
+    guard.dismissOverlay();
+    expect(overlayUp()).toBe(false);
+    runTo(T0 + 4 * S);
+    expect(overlayUp()).toBe(false);
+    runTo(T0 + 5 * S);
+    expect(overlayUp()).toBe(true); // same app still in front → back
+    expect(of('overlay')).toHaveLength(2);
+
+    // Dismiss, then switch to a fine app: stays down, and the grace ends with the foreground change.
+    guard.dismissOverlay();
+    guard.onForeground(fg('code.exe'));
+    runTo(T0 + 20 * S);
+    expect(overlayUp()).toBe(false);
+    expect(of('overlay')).toHaveLength(2);
+    // Coming back is a new entry → overlay immediately (no leftover grace).
+    guard.onForeground(fg('steam.exe'));
+    expect(overlayUp()).toBe(true);
+  });
+
+  test('dismiss also re-arms for an uncovered browser; no-op when nothing is shown', () => {
+    start();
+    guard.dismissOverlay();
+    expect(calls).toEqual([]);
+    covered = false;
+    guard.onForeground(fg('chrome.exe'));
+    runTo(T0 + 4 * S);
+    expect(overlayUp()).toBe(true);
+    guard.dismissOverlay();
+    runTo(T0 + 8 * S);
+    expect(overlayUp()).toBe(false);
+    runTo(T0 + 9 * S);
+    expect(of('overlay').map((c) => c.label)).toEqual([BROWSER_LABEL, BROWSER_LABEL]);
+  });
+});
+
 describe('guard IPC parsers', () => {
   test('accept only well-formed lowercase exe answers', () => {
     expect(parsePromptAnswer({ exe: 'spotify.exe', study: true })).toEqual({ exe: 'spotify.exe', study: true });
@@ -304,5 +345,50 @@ describe('guard IPC parsers', () => {
     expect(parseOfferAnswer({ exe: 'game.exe', choice: 'block' })).toEqual({ exe: 'game.exe', choice: 'block' });
     expect(parseOfferAnswer({ exe: 'game.exe', choice: 'nuke' })).toBeNull();
     expect(parseOfferAnswer({ exe: 'game', choice: 'fine' })).toBeNull();
+  });
+});
+
+describe('SharedHotkey (Ctrl+Alt+Y owner)', () => {
+  test('binds once, answers the most recently shown owner, falls back on release, unbinds when empty', () => {
+    const log: string[] = [];
+    let fire: (() => void) | null = null;
+    const key = new SharedHotkey(
+      (fn) => { log.push('bind'); fire = fn; return true; },
+      () => { log.push('unbind'); fire = null; },
+    );
+    key.claim('checkin', () => log.push('checkin:Y'));
+    key.claim('prompt', () => log.push('prompt:Y'));
+    expect(log).toEqual(['bind']); // one registration for both
+    fire!();
+    expect(log.at(-1)).toBe('prompt:Y'); // newest visible prompt wins
+    key.release('prompt');
+    fire!();
+    expect(log.at(-1)).toBe('checkin:Y'); // back to the check-in
+    // Re-claiming moves an owner to the top; releasing an unknown owner is harmless.
+    key.claim('prompt', () => log.push('prompt:Y2'));
+    key.claim('checkin', () => log.push('checkin:Y2'));
+    key.release('nobody');
+    fire!();
+    expect(log.at(-1)).toBe('checkin:Y2');
+    key.release('checkin');
+    key.release('prompt');
+    expect(log.filter((l) => l === 'bind' || l === 'unbind')).toEqual(['bind', 'unbind']);
+    expect(fire).toBeNull();
+    // Claimable again afterwards.
+    key.claim('prompt', () => log.push('prompt:Y3'));
+    fire!();
+    expect(log.at(-1)).toBe('prompt:Y3');
+  });
+
+  test('a failed registration is retried on the next claim', () => {
+    let ok = false;
+    let binds = 0;
+    const key = new SharedHotkey(() => { binds++; return ok; }, () => {});
+    key.claim('a', () => {});
+    ok = true;
+    key.claim('b', () => {});
+    expect(binds).toBe(2);
+    key.claim('c', () => {});
+    expect(binds).toBe(2);
   });
 });

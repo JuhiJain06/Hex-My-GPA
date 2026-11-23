@@ -166,7 +166,7 @@ async function main(): Promise<void> {
       guardUi.hideOffer();
       guard.answerOffer(exe, choice);
     },
-    dismissOverlay: () => { log('overlay dismissed'); guardUi.hideOverlay(); },
+    dismissOverlay: () => { log('overlay dismissed'); guard.dismissOverlay(); },
   });
 
   app.on('second-instance', () => (ctrl.sessionId !== null ? showSessionWindows(false) : showWindow('start')));

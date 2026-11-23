@@ -1,13 +1,12 @@
 import { screen, type Display } from 'electron';
 import type { GuardUi } from './appGuard';
 import type { ForegroundWindow } from './foreground';
-import { closeWindow, showWindow } from './windows';
-import { bindHotkey, unbindHotkey } from './hotkeys';
+import { ABOVE_OVERLAY, closeWindow, getWindow, raiseAboveOverlay, showWindow } from './windows';
+import { bindHotkey, ctrlAltY, unbindHotkey } from './hotkeys';
 
 const MARGIN = 16;
 const PROMPT = { w: 340, h: 130 };
 const OFFER = { w: 360, h: 150 };
-const KEYS = ['prompt-y', 'prompt-n'] as const;
 
 export interface GuardUiDeps {
   /** The last real foreground window (for the overlay's display). */
@@ -36,7 +35,8 @@ function bottomRight(w: number, h: number, above = 0) {
 /**
  * Electron side of the app guard. The overlay covers the display of the foreground window, sits at
  * the 'screen-saver' level and never takes focus; its button only hides it. The gray-app prompt is
- * check-in style with Ctrl+Alt+Y/N bound only while it is visible; the offer (stacked above the
+ * check-in style with Ctrl+Alt+Y/N bound only while it is visible (Y is shared with the
+ * check-in: the newest visible one answers); the offer (stacked above the
  * prompt slot) has buttons only.
  */
 export function createGuardUi(deps: GuardUiDeps): GuardUi & { hideOffer(): void } {
@@ -48,6 +48,10 @@ export function createGuardUi(deps: GuardUiDeps): GuardUi & { hideOffer(): void 
       if (!win) return;
       win.setBounds(targetDisplay(deps.foreground()).bounds);
       win.setAlwaysOnTop(true, 'screen-saver');
+      // Keep pending prompts clickable: raise them now and again once a new overlay is actually shown.
+      const raise = () => ABOVE_OVERLAY.forEach((n) => raiseAboveOverlay(getWindow(n)));
+      raise();
+      win.once('show', raise);
     },
     hideOverlay() {
       closeWindow('overlay');
@@ -55,16 +59,21 @@ export function createGuardUi(deps: GuardUiDeps): GuardUi & { hideOffer(): void 
     showPrompt(exe) {
       const win = showWindow('prompt', { query: { kind: 'gray', exe } });
       win?.setBounds(bottomRight(PROMPT.w, PROMPT.h));
-      bindHotkey('prompt-y', 'Control+Alt+Y', () => deps.answerPrompt(exe, true));
+      raiseAboveOverlay(win);
+      win?.once('show', () => raiseAboveOverlay(win));
+      ctrlAltY.claim('prompt', () => deps.answerPrompt(exe, true));
       bindHotkey('prompt-n', 'Control+Alt+N', () => deps.answerPrompt(exe, false));
     },
     hidePrompt() {
-      KEYS.forEach(unbindHotkey);
+      ctrlAltY.release('prompt');
+      unbindHotkey('prompt-n');
       closeWindow('prompt');
     },
     showOffer(exe) {
       const win = showWindow('offer', { query: { kind: 'offer', exe } });
       win?.setBounds(bottomRight(OFFER.w, OFFER.h, PROMPT.h + MARGIN));
+      raiseAboveOverlay(win);
+      win?.once('show', () => raiseAboveOverlay(win));
     },
     hideOffer() {
       closeWindow('offer');

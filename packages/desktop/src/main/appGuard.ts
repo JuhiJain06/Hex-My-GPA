@@ -20,6 +20,8 @@ const BROWSER_GRACE_MS = 3_000;
 const PROMPT_TIMEOUT_MS = 30_000;
 const REASK_MS = 5 * 60_000;
 const OFFER_AFTER_MS = 2 * 60_000;
+/** After the overlay's button, it stays down this long; then it re-arms if the app is still in front. */
+const DISMISS_MS = 5_000;
 
 /**
  * Watches the foreground app while blocking is active (unbypassed focus):
@@ -39,6 +41,8 @@ export class AppGuard {
   /** Whether a slip was already logged for the current entry in this block. */
   private entrySlipped = false;
   private overlayKey: string | null = null;
+  /** Set by the overlay's button; cleared on any foreground change. */
+  private dismissedUntil: number | null = null;
   private browserUncoveredSince: number | null = null;
   private prompt: { exe: string; at: number } | null = null;
   /** Per block: gray exes answered "yes", and when each other gray exe may be asked again. */
@@ -75,6 +79,7 @@ export class AppGuard {
 
   onForeground(fg: Foreground | null): void {
     this.account();
+    this.dismissedUntil = null;
     if (fg && this.isOwn(fg.pid)) {
       this.ownFront = true;
     } else {
@@ -91,6 +96,17 @@ export class AppGuard {
   tick(): void {
     this.account();
     this.evaluate();
+  }
+
+  /**
+   * The overlay's "Back to <topic>" button: hide it for a few seconds so the user can switch away.
+   * If the same blocked app is still in front afterwards, the overlay comes back.
+   */
+  dismissOverlay(): void {
+    if (this.overlayKey === null) return;
+    this.overlayKey = null;
+    this.dismissedUntil = this.clock() + DISMISS_MS;
+    this.ui.hideOverlay();
   }
 
   answerPrompt(exe: string, study: boolean): void {
@@ -172,6 +188,10 @@ export class AppGuard {
           this.ui.showOffer(fg.exe);
         }
       }
+    }
+    if (this.dismissedUntil !== null) {
+      if (now < this.dismissedUntil) overlay = null;
+      else this.dismissedUntil = null;
     }
     this.setOverlay(overlay);
   }
