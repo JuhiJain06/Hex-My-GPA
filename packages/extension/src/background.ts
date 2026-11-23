@@ -2,6 +2,7 @@
 // lives in chrome.storage.local (`secret`, `lastState`) or in the persisted dynamic DNR rules;
 // in-memory state here is only the live socket and caches that are safe to lose.
 import { BRIDGE_PORT, type DesktopToExt, type ExtToDesktop } from '@study-buddy/core';
+import { createConnector } from './connector';
 import { parseDesktopMessage } from './messages';
 import { backoffMs, buildBlockRules, sameRules, shouldBlockOffline } from './rules';
 import { browserKind, windowReports } from './util';
@@ -88,23 +89,40 @@ function send(m: ExtToDesktop): boolean {
   try { ws.send(JSON.stringify(m)); return true; } catch { return false; }
 }
 
-async function connect(): Promise<void> {
-  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
-  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+type Hello = Extract<ExtToDesktop, { t: 'hello' }>;
+
+const socketActive = (): boolean =>
+  ws !== null && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN);
+
+async function prepareHello(): Promise<Hello | null> {
   await applyOffline();
   const secret = await loadSecret();
-  if (!secret) return; // not paired yet; saving a code triggers connect()
-  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return; // raced
+  if (!secret) return null; // not paired yet; saving a code triggers a reconnect
   const incognitoAllowed = await chrome.extension.isAllowedIncognitoAccess();
   const brands = (navigator as Navigator & { userAgentData?: { brands: { brand: string }[] } }).userAgentData?.brands;
+  return { t: 'hello', secret, browser: browserKind(brands), incognitoAllowed };
+}
 
+// Single-flight: startup + alarm wake, retry timer + alarm, or a code change can all call
+// connect() at once; they share one attempt, so only one socket is ever opened.
+const connector = createConnector<Hello>({ isActive: socketActive, prepare: prepareHello, open: openSocket });
+
+function connect(): Promise<void> {
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+  return connector.connect().catch((err) => {
+    console.error('[study-buddy] connect failed', err);
+    scheduleRetry();
+  });
+}
+
+function openSocket(hello: Hello): void {
   let sock: WebSocket;
   try { sock = new WebSocket(`ws://127.0.0.1:${BRIDGE_PORT}`); } catch { scheduleRetry(); return; }
   ws = sock;
   helloed = false;
   sock.onopen = () => {
-    helloIncognito = incognitoAllowed;
-    sock.send(JSON.stringify({ t: 'hello', secret, browser: browserKind(brands), incognitoAllowed } satisfies ExtToDesktop));
+    helloIncognito = hello.incognitoAllowed;
+    sock.send(JSON.stringify(hello));
   };
   sock.onmessage = (e) => {
     if (ws !== sock) return;
@@ -146,6 +164,7 @@ function reconnectNow(): void {
   helloed = false;
   stopPing();
   if (old) { old.onclose = null; old.close(); }
+  connector.invalidate(); // an attempt already awaiting must not open with the old code
   void connect();
 }
 
