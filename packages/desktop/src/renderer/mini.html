@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Study Buddy</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { -webkit-app-region: drag; padding: 8px 10px; overflow: hidden; font-size: 12px;
+      border: 1px solid var(--line); border-radius: 8px; }
+    button, .click { -webkit-app-region: no-drag; }
+    .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    #topic { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #label { color: var(--muted); flex: none; }
+    .mid { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 4px; }
+    #time { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+    #time.paused { color: var(--warn); font-size: 18px; cursor: pointer; }
+    .stats { text-align: right; color: var(--muted); line-height: 1.3; }
+    .btns { display: flex; gap: 4px; }
+    .btns button { flex: 1; padding: 3px 4px; font-size: 11px; white-space: nowrap; }
+    button:disabled { opacity: .4; cursor: default; }
+    #ext { color: var(--warn); font-size: 10.5px; margin-top: 4px; line-height: 1.2; }
+    .banner { position: fixed; inset: 0; background: var(--panel); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 10px;
+      border-radius: 8px; border: 1px solid var(--accent); }
+    .banner .msg { font-size: 15px; font-weight: 600; }
+    .banner .btns { width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="top"><span id="topic"></span><span id="label"></span></div>
+  <div class="mid">
+    <span id="time" class="click">--:--</span>
+    <div class="stats"><div>Today <span id="today">0m</span></div><div>Streak <span id="streak">0</span>d</div></div>
+  </div>
+  <div class="btns">
+    <button id="extend" title="Add 10 minutes to this block">+10 min</button>
+    <button id="endBlock">End block</button>
+    <button id="blockingOff" title="Turn off blocking">Blocking off</button>
+    <button id="end">End session</button>
+  </div>
+  <div id="ext" class="hidden">Browser buddy not connected — websites aren't being watched</div>
+
+  <div id="phone" class="banner hidden"><div class="msg">Phone in another room?</div></div>
+  <div id="planned" class="banner hidden">
+    <div class="msg" id="plannedMsg"></div>
+    <div class="btns"><button id="plannedEnd">End session</button><button id="plannedKeep" class="primary">Keep going</button></div>
+  </div>
+  <script src="mini.js"></script>
+</body>
+</html>

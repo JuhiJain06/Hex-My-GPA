@@ -1,0 +1,28 @@
+import { globalShortcut } from 'electron';
+
+/**
+ * Named global shortcuts. Later tasks bind keys only while a prompt is visible
+ * (e.g. Ctrl+Alt+Y for check-ins) and release them when it hides.
+ */
+const bound = new Map<string, string>();
+
+export function bindHotkey(id: string, accelerator: string, fn: () => void): boolean {
+  unbindHotkey(id);
+  let ok = false;
+  try { ok = globalShortcut.register(accelerator, fn); } catch (err) { console.error('[hotkeys] register failed', accelerator, err); }
+  if (ok) bound.set(id, accelerator);
+  else console.warn(`[hotkeys] ${accelerator} is taken by another app`);
+  return ok;
+}
+
+export function unbindHotkey(id: string): void {
+  const acc = bound.get(id);
+  if (acc === undefined) return;
+  globalShortcut.unregister(acc);
+  bound.delete(id);
+}
+
+export function unbindAllHotkeys(): void {
+  globalShortcut.unregisterAll();
+  bound.clear();
+}

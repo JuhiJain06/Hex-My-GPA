@@ -1,0 +1,17 @@
+:root {
+  --bg: #1d1f24; --panel: #262930; --text: #e8e6e1; --muted: #9a9ca3;
+  --accent: #4cc08a; --warn: #e0b04a; --danger: #d9655b; --line: #34373f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 14px/1.4 "Segoe UI", system-ui, sans-serif; user-select: none; }
+button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #10261b; font-weight: 600; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 9px; width: 100%; user-select: text; }
+.muted { color: var(--muted); }
+.hidden { display: none !important; }

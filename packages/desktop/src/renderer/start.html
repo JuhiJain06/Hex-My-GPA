@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Study Buddy</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { padding: 22px 24px; }
+    h1 { font-size: 18px; margin: 0 0 16px; font-weight: 600; }
+    label { display: block; margin: 12px 0 4px; color: var(--muted); font-size: 12px; }
+    .toggle { display: flex; gap: 0; }
+    .toggle button { flex: 1; border-radius: 0; }
+    .toggle button:first-child { border-radius: 6px 0 0 6px; }
+    .toggle button:last-child { border-radius: 0 6px 6px 0; }
+    .toggle button[aria-pressed="true"] { background: var(--accent); color: #10261b; border-color: var(--accent); }
+    #goal.empty { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset; }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    #error { color: var(--danger); min-height: 20px; margin-top: 10px; font-size: 13px; }
+    #go { width: 100%; margin-top: 8px; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h1>What are you studying?</h1>
+  <form id="form" autocomplete="off">
+    <label for="topic">Topic</label>
+    <input id="topic" required maxlength="200" placeholder="e.g. Organic chemistry">
+    <label>Studying from</label>
+    <div class="toggle" role="group" aria-label="Studying from">
+      <button type="button" id="laptop" aria-pressed="true">Laptop</button>
+      <button type="button" id="book" aria-pressed="false">Book</button>
+    </div>
+    <label for="goal">Goal</label>
+    <input id="goal" maxlength="500" placeholder='What does "done" look like?'>
+    <div class="row">
+      <div>
+        <label for="hours">Planned hours (optional)</label>
+        <input id="hours" type="number" min="0.25" max="24" step="0.25">
+      </div>
+    </div>
+    <div id="error" role="alert"></div>
+    <button id="go" class="primary" type="submit">Start</button>
+  </form>
+  <script src="start.js"></script>
+</body>
+</html>

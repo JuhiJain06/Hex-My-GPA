@@ -1,0 +1,69 @@
+import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import type { Db } from './db';
+import type { SessionController } from './controller';
+import { closeBySender, showWindow } from './windows';
+import { IPC, type StartRequest, type WindowName } from '../shared/ipc';
+
+export interface IpcDeps {
+  ctrl: SessionController;
+  db: Db;
+  /** Called after a session started from the start window. */
+  onStarted(): void;
+  /** Runs the whole end-of-session flow (controller.end + windows). */
+  endSession(): void;
+}
+
+/** Windows a renderer may open by name. */
+const OPENABLE: readonly WindowName[] = ['start', 'mini', 'bypass', 'history', 'settings'];
+
+const fromUs = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => (e.senderFrame?.url ?? '').startsWith('file:');
+
+function on(channel: string, fn: (payload: unknown, e: IpcMainEvent) => void): void {
+  ipcMain.on(channel, (e, payload: unknown) => {
+    if (!fromUs(e)) return;
+    try { fn(payload, e); } catch (err) { console.error(`[ipc] ${channel} failed`, err); }
+  });
+}
+
+function handle(channel: string, fn: (payload: unknown) => unknown): void {
+  ipcMain.handle(channel, (e, payload: unknown) => {
+    if (!fromUs(e)) throw new Error('Rejected sender');
+    return fn(payload);
+  });
+}
+
+export function parseStart(p: unknown): StartRequest | null {
+  if (typeof p !== 'object' || p === null) return null;
+  const r = p as Record<string, unknown>;
+  const topic = typeof r.topic === 'string' ? r.topic.trim().slice(0, 200) : '';
+  if (!topic) return null;
+  const mode = r.mode === 'book' ? 'book' : r.mode === 'laptop' ? 'laptop' : null;
+  if (!mode) return null;
+  const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim().slice(0, 500) : null;
+  const pm = typeof r.plannedMin === 'number' && Number.isFinite(r.plannedMin) && r.plannedMin > 0
+    ? Math.min(Math.round(r.plannedMin), 24 * 60) : null;
+  return { topic, mode, goal, plannedMin: pm };
+}
+
+export function registerIpc({ ctrl, db, onStarted, endSession }: IpcDeps): void {
+  handle(IPC.state, () => ctrl.uiState());
+  handle(IPC.settingsGet, () => db.getSettings());
+  handle(IPC.sessionStart, (p) => {
+    const req = parseStart(p);
+    if (!req) return { ok: false, error: 'Please enter a topic.' };
+    ctrl.start(req);
+    onStarted();
+    return { ok: true };
+  });
+  handle(IPC.blockingOff, (p) => typeof p === 'string' && ctrl.turnOffBlocking(p));
+
+  on(IPC.sessionEnd, () => { if (ctrl.sessionId !== null) endSession(); });
+  on(IPC.sessionResume, () => ctrl.resume());
+  on(IPC.blockNext, () => ctrl.nextBlock());
+  on(IPC.blockEndEarly, () => ctrl.endBlockEarly());
+  on(IPC.blockExtend, () => ctrl.extend());
+  on(IPC.windowOpen, (p) => {
+    if (typeof p === 'string' && (OPENABLE as readonly string[]).includes(p)) showWindow(p as WindowName, { focus: true });
+  });
+  on(IPC.windowClose, (_p, e) => closeBySender(e.sender.id));
+}
