@@ -13,6 +13,10 @@ export const IPC = {
   blockExtend: 'block:extend',
   blockingOff: 'blocking:off',
   checkinAnswer: 'checkin:answer',
+  /** R→M: the check-in window asks to become focusable so a text input can take keys. */
+  checkinFocus: 'checkin:focus',
+  /** M→R: Ctrl+Alt+S pressed; the check-in window should open its new-topic input. */
+  checkinSwitch: 'checkin:switch',
   promptAnswer: 'prompt:answer',
   reflectionSave: 'reflection:save',
   settingsGet: 'settings:get',
@@ -52,8 +56,15 @@ export interface StartRequest {
   plannedMin: number | null;
 }
 
+/** Payload of `checkin:answer`. */
+export type CheckinAnswerMsg =
+  | { answer: 'yes' }
+  | { answer: 'drifted' }
+  | { answer: 'switched'; topic: string }
+  | { answer: 'pages'; pages: number };
+
 /** Windows a renderer may ask main to open (`window:open`). Later tasks add names here. */
-export type WindowName = 'start' | 'mini' | 'break' | 'bypass' | 'history' | 'settings';
+export type WindowName = 'start' | 'mini' | 'break' | 'checkin' | 'bypass' | 'history' | 'settings';
 
 export type EngineEventMsg = EngineEvent;
 

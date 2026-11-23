@@ -133,6 +133,16 @@ export class SessionController extends EventEmitter {
     this.safe('addEvent', () => this.db.addEvent(id, { ...e, at }));
   }
 
+  /** Changes the session topic (check-in "switched topic"). Ignores blank input. */
+  setTopic(topic: string): void {
+    const t = topic.trim().slice(0, 200);
+    const session = this.eng.state.session;
+    if (this.id === null || !session || !t) return;
+    session.topic = t;
+    this.save(this.clock());
+    this.emitUi();
+  }
+
   setExtensionConnected(connected: boolean): void {
     if (connected === this.extConnected) return;
     this.extConnected = connected;

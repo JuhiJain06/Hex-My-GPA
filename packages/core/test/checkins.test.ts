@@ -16,6 +16,12 @@ test('unanswered: wait, then pause if no input since shown, else ignored', () =>
   expect(resolveUnanswered('book', 0, 4 * M, 240)).toBe('wait');
   expect(resolveUnanswered('book', 0, 5 * M, 300)).toBe('pause');
 });
+test('config override replaces the defaults', () => {
+  const fast = { laptop: { baseMin: 1, timeoutMin: 20 / 60 }, book: { baseMin: 1, timeoutMin: 20 / 60 }, jitterMin: 0 };
+  expect(nextCheckinAt('laptop', 0, () => 0.9, fast)).toBe(1 * M);
+  expect(resolveUnanswered('book', 0, 19_000, 19, fast)).toBe('wait');
+  expect(resolveUnanswered('book', 0, 20_000, 20, fast)).toBe('pause');
+});
 test('suggestion never repeats back to back', () => {
   for (const s of SHORT_SUGGESTIONS) expect(pickSuggestion(false, s)).not.toBe(s);
   for (const s of LONG_SUGGESTIONS) expect(pickSuggestion(true, s)).not.toBe(s);

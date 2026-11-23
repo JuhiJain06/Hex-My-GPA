@@ -65,6 +65,22 @@ describe('SessionController', () => {
     expect(db.activeSession(now)!.snapshot.phase).toBe('break');
   });
 
+  test('setTopic trims, caps, persists and emits ui; blank is ignored', () => {
+    const c = new SessionController(db, clock);
+    c.start(info);
+    const uis: UiState[] = [];
+    c.on('ui', (u: UiState) => uis.push(u));
+    c.setTopic('   ');
+    expect(c.uiState().topic).toBe('Maths');
+    expect(uis).toHaveLength(0);
+    c.setTopic('  Physics  ');
+    expect(c.uiState().topic).toBe('Physics');
+    expect(uis.at(-1)?.topic).toBe('Physics');
+    expect(db.activeSession(now)!.snapshot.session?.topic).toBe('Physics');
+    c.setTopic('x'.repeat(300));
+    expect(c.uiState().topic).toHaveLength(200);
+  });
+
   test('next break suggestion differs from the previous one', () => {
     const c = new SessionController(db, clock, { rand: () => 0 });
     c.start(info);

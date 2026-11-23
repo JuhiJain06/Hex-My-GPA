@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Check-in</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); }
+    .kicker { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    #q { font-size: 16px; font-weight: 600; }
+    #topic { color: var(--accent); }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btns button { padding: 7px 12px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row input { width: 100px; }
+    #newTopic input { width: 100%; }
+    kbd { font: 11px/1 monospace; color: var(--muted); margin-left: 4px; }
+    body.book { gap: 12px; }
+    body.book #q { font-size: 18px; }
+  </style>
+</head>
+<body>
+  <div class="kicker">Check-in</div>
+  <div id="q">Still on <span id="topic"></span>?</div>
+  <div id="pagesRow" class="row hidden">
+    <label for="pages" class="muted">Pages read</label>
+    <input id="pages" type="number" min="0" max="2000" step="1" inputmode="numeric">
+  </div>
+  <div id="main" class="btns">
+    <button id="yes" class="primary">Yes<kbd>Ctrl+Alt+Y</kbd></button>
+    <button id="switched">Switched topic<kbd>Ctrl+Alt+S</kbd></button>
+    <button id="drifted">Drifted<kbd>Ctrl+Alt+D</kbd></button>
+  </div>
+  <form id="newTopic" class="hidden">
+    <input id="newTopicInput" type="text" maxlength="200" placeholder="New topic, then Enter" autocomplete="off">
+  </form>
+  <script src="checkin.js"></script>
+</body>
+</html>

@@ -54,6 +54,16 @@ defineWindow('break', {
   }),
 });
 
+defineWindow('checkin', {
+  html: 'checkin',
+  inactive: true,
+  // Sized and positioned per mode by checkinUi; never takes focus unless the user clicks an input.
+  options: () => ({
+    width: 340, height: 150, frame: false, resizable: false, alwaysOnTop: true, skipTaskbar: true,
+    minimizable: false, maximizable: false, fullscreenable: false, focusable: false,
+  }),
+});
+
 const base = (): BrowserWindowConstructorOptions => ({
   show: false,
   autoHideMenuBar: true,

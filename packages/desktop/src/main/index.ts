@@ -4,6 +4,8 @@ import type { EngineEvent } from '@study-buddy/core';
 import { openDb } from './db';
 import { SessionController, type UiState } from './controller';
 import { autostartTopic, dataDirOverride, debug, fastMode, rhythmOverride } from './config';
+import { CheckinRunner, FAST_CHECKIN_CONFIG } from './checkins';
+import { createCheckinUi } from './checkinUi';
 import { broadcast, closeWindow, showWindow } from './windows';
 import { breakWindowAction } from './breakFlow';
 import { registerIpc } from './ipc';
@@ -57,6 +59,19 @@ async function main(): Promise<void> {
     showWindow('start');
   };
 
+  const checkinUi = createCheckinUi((a) => checkins.answer(a));
+  const checkins = new CheckinRunner(
+    ctrl,
+    {
+      show: (c) => { log('check-in shown', c.mode); checkinUi.show(c); },
+      hide: () => { log('check-in hidden'); checkinUi.hide(); },
+    },
+    () => powerMonitor.getSystemIdleTime(),
+    Date.now,
+    Math.random,
+    fastMode ? FAST_CHECKIN_CONFIG : undefined,
+  );
+
   const tray = createTray({
     open: () => (ctrl.sessionId !== null ? showSessionWindows(false) : showWindow('start')),
     history: () => showWindow('history', { focus: true }),
@@ -97,6 +112,8 @@ async function main(): Promise<void> {
       tray.refresh();
     },
     endSession,
+    onCheckinAnswer: (a, topic) => { log('check-in answer', JSON.stringify(a)); checkins.answer(a, topic); },
+    focusCheckin: (id) => checkinUi.focus(id),
   });
 
   app.on('second-instance', () => (ctrl.sessionId !== null ? showSessionWindows(false) : showWindow('start')));
@@ -124,6 +141,7 @@ async function main(): Promise<void> {
 
   setInterval(() => {
     try { ctrl.tick(); } catch (err) { console.error('[buddy] tick failed', err); }
+    try { checkins.tick(); } catch (err) { console.error('[buddy] check-in tick failed', err); }
   }, 1000);
   console.log('[buddy] ready');
 }
