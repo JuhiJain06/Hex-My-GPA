@@ -143,6 +143,25 @@ describe('Bridge', () => {
     expect(bypasses).toEqual([]);
   });
 
+  test('disconnect, reconnect, disconnect: no bypass before delay after the last disconnect, then exactly one', async () => {
+    await make({ bypassDelayMs: 300 });
+    const bypasses: unknown[] = [];
+    bridge.on('bypass', (b) => bypasses.push(b));
+    const a = await connect();
+    hello(a.ws);
+    await sleep(40);
+    a.ws.close();
+    await sleep(100);
+    const b = await connect();
+    hello(b.ws);
+    await sleep(100);
+    b.ws.close(); // last disconnect; first timer would have fired ~160 ms from now
+    await sleep(200);
+    expect(bypasses).toEqual([]);
+    await sleep(350);
+    expect(bypasses).toEqual([{ target: 'extension-disconnected' }]);
+  });
+
   test('no bypass when not blocking', async () => {
     await make();
     blocking = false;

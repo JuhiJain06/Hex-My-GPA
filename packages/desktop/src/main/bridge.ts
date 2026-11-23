@@ -44,7 +44,8 @@ export class Bridge extends EventEmitter {
   private wss: WebSocketServer | null = null;
   private conns = new Set<Conn>();
   private lastState: StateMessage | null = null;
-  private bypassTimers = new Set<NodeJS.Timeout>();
+  private bypassTimers = new Map<BrowserKind, NodeJS.Timeout>();
+  private closed = false;
   private readonly secret: Buffer;
 
   constructor(private readonly opts: BridgeOptions) {
@@ -61,6 +62,7 @@ export class Bridge extends EventEmitter {
       const wss = new WebSocketServer({
         host: '127.0.0.1',
         port: this.opts.port,
+        maxPayload: 64 * 1024,
         verifyClient: (info: { origin: string }) => originOk(info.origin),
       });
       const onError = (err: Error) => reject(err);
@@ -76,7 +78,8 @@ export class Bridge extends EventEmitter {
   }
 
   close(): void {
-    for (const t of this.bypassTimers) clearTimeout(t);
+    this.closed = true;
+    for (const t of this.bypassTimers.values()) clearTimeout(t);
     this.bypassTimers.clear();
     for (const c of this.conns) {
       if (c.timer) clearTimeout(c.timer);
@@ -138,6 +141,8 @@ export class Bridge extends EventEmitter {
         return;
       }
       conn.hello = { browser: msg.browser, incognitoAllowed: msg.incognitoAllowed };
+      const pending = this.bypassTimers.get(msg.browser);
+      if (pending) { clearTimeout(pending); this.bypassTimers.delete(msg.browser); }
       if (conn.timer) { clearTimeout(conn.timer); conn.timer = null; }
       this.send(conn.ws, { t: 'helloAck', ok: true });
       if (this.lastState) this.send(conn.ws, this.lastState);
@@ -156,18 +161,20 @@ export class Bridge extends EventEmitter {
   private onClose(conn: Conn): void {
     this.conns.delete(conn);
     if (conn.timer) clearTimeout(conn.timer);
-    if (!conn.hello) return;
+    if (this.closed || !conn.hello) return;
     this.emit('connection');
     if (!this.opts.isBlocking()) return;
     const kind = conn.hello.browser;
     const reconnected = () => this.helloed().some((c) => c.hello!.browser === kind);
+    const old = this.bypassTimers.get(kind);
+    if (old) clearTimeout(old);
     const t = setTimeout(() => {
-      this.bypassTimers.delete(t);
-      if (reconnected()) return;
+      this.bypassTimers.delete(kind);
+      if (this.closed || reconnected() || !this.opts.isBlocking()) return;
       this.opts.isBrowserRunning(kind).then((running) => {
-        if (running && !reconnected()) this.emit('bypass', { target: 'extension-disconnected' });
+        if (running && !this.closed && !reconnected()) this.emit('bypass', { target: 'extension-disconnected' });
       }, () => { /* treat as not running */ });
     }, this.opts.bypassDelayMs ?? 10_000);
-    this.bypassTimers.add(t);
+    this.bypassTimers.set(kind, t);
   }
 }
