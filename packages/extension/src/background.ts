@@ -6,6 +6,7 @@ import { createConnector } from './connector';
 import { parseDesktopMessage } from './messages';
 import { backoffMs, buildBlockRules, sameRules, shouldBlockOffline } from './rules';
 import { browserKind, windowReports } from './util';
+import { parseYtMessage, ytStateFor } from './youtubeLogic';
 
 type StateMsg = Extract<DesktopToExt, { t: 'state' }>;
 type Rule = chrome.declarativeNetRequest.Rule;
@@ -75,11 +76,33 @@ async function applyOffline(): Promise<void> {
     await chrome.alarms.clear(OFFLINE_END_ALARM);
     await setRules([]);
   }
+  await pushYt();
 }
 
 async function onState(s: StateMsg): Promise<void> {
   await chrome.storage.local.set({ lastState: s });
+  await pushYt();
   await setRules(rulesFor(s));
+}
+
+// ---------- YouTube tabs ----------
+
+// Content scripts hold a `yt` port; it drops when this worker dies and they reconnect, so the
+// set only ever holds live ports and each (re)connect gets the current state immediately.
+const ytPorts = new Set<chrome.runtime.Port>();
+
+async function ytState() {
+  return ytStateFor(await loadLastState(), helloed, Date.now());
+}
+
+async function pushYt(only?: chrome.runtime.Port): Promise<void> {
+  const targets = only ? [only] : [...ytPorts];
+  if (targets.length === 0) return;
+  const st = await ytState();
+  for (const p of targets) {
+    if (!ytPorts.has(p)) continue;
+    try { p.postMessage(st); } catch { ytPorts.delete(p); }
+  }
 }
 
 // ---------- socket ----------
@@ -210,8 +233,22 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 type PageMessage = { t: 'slip'; target: unknown } | { t: 'status' } | { t: 'recheck' };
 
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'yt' || port.sender?.id !== chrome.runtime.id) { port.disconnect(); return; }
+  ytPorts.add(port);
+  port.onDisconnect.addListener(() => ytPorts.delete(port));
+  void pushYt(port);
+});
+
 chrome.runtime.onMessage.addListener((msg: PageMessage, sender, reply) => {
   if (sender.id !== chrome.runtime.id) return false;
+  const yt = (msg as { type?: unknown } | null)?.type;
+  if (yt === 'yt-slip' || yt === 'yt-study') {
+    // From the YouTube content script; validated, then forwarded if connected, else dropped.
+    const out = parseYtMessage(msg, sender);
+    if (out) send(out);
+    return false;
+  }
   if (msg?.t === 'slip') {
     // Only the blocked page reports slips, and only of this kind. Dropped if disconnected.
     if (typeof msg.target === 'string' && sender.url?.startsWith(chrome.runtime.getURL('/blocked.html'))) {
