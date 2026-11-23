@@ -189,6 +189,17 @@ export class SessionController extends EventEmitter {
     }
   }
 
+  /** Intervals of the running session, including the open focus stretch; empty when idle. */
+  liveIntervals(now: number = this.clock()): [number, number][] {
+    if (this.id === null) return [];
+    const s = this.eng.state;
+    const out: [number, number][] = [...s.intervals];
+    if (s.phase === 'focus' && s.pausedSince === null && s.openFocusSince !== null && now > s.openFocusSince) {
+      out.push([s.openFocusSince, now]);
+    }
+    return out;
+  }
+
   private totals(now: number): Map<string, number> {
     const day = localDay(now);
     if (!this.history || this.history.day !== day) {
@@ -198,14 +209,7 @@ export class SessionController extends EventEmitter {
       }
       this.history = { day, intervals };
     }
-    const all = [...this.history.intervals];
-    if (this.id !== null) {
-      const s = this.eng.state;
-      all.push(...s.intervals);
-      if (s.phase === 'focus' && s.pausedSince === null && s.openFocusSince !== null && now > s.openFocusSince) {
-        all.push([s.openFocusSince, now]);
-      }
-    }
+    const all = [...this.history.intervals, ...this.liveIntervals(now)];
     return dailyTotals(all);
   }
 

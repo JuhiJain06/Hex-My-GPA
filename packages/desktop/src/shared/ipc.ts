@@ -1,4 +1,4 @@
-import type { EngineEvent, Mode, Phase } from '@study-buddy/core';
+import type { EngineEvent, Mode, Phase, Summary } from '@study-buddy/core';
 
 /**
  * Every IPC channel the renderers may use. The preload refuses anything not listed here.
@@ -74,9 +74,25 @@ export interface PromptAnswerMsg { exe: string; study: boolean }
 /** Payload of `offer:answer`. */
 export interface OfferAnswerMsg { exe: string; choice: 'block' | 'fine' | 'later' }
 
+/** Reply of `summary:get`; null when the session id is not a finished session. */
+export interface SummaryView {
+  topic: string;
+  mode: Mode;
+  goal: string | null;
+  summary: Summary;
+}
+
+/** Reply of `history:get`. */
+export interface HistoryView {
+  days: { day: string; ms: number }[];
+  tags: { tag: string; count: number }[];
+  streakDays: number;
+}
+
 /** Every window main can show (renderers may open only the `OPENABLE` subset). Later tasks add names here. */
 export type WindowName =
-  | 'start' | 'mini' | 'break' | 'checkin' | 'overlay' | 'prompt' | 'offer' | 'bypass' | 'history' | 'settings';
+  | 'start' | 'mini' | 'break' | 'checkin' | 'overlay' | 'prompt' | 'offer' | 'bypass' | 'history' | 'settings'
+  | 'reflection' | 'summary';
 
 export type EngineEventMsg = EngineEvent;
 

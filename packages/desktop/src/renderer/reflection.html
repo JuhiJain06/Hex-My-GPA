@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>How did it go?</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { padding: 22px 24px; }
+    h1 { font-size: 18px; margin: 0 0 14px; font-weight: 600; }
+    h2 { font-size: 13px; margin: 18px 0 8px; font-weight: 600; color: var(--muted); }
+    .seg { display: flex; }
+    .seg button { flex: 1; border-radius: 0; }
+    .seg button:first-child { border-radius: 6px 0 0 6px; }
+    .seg button:last-child { border-radius: 0 6px 6px 0; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips button { border-radius: 999px; }
+    button[aria-pressed="true"] { background: var(--accent); color: #10261b; border-color: var(--accent); }
+    textarea { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+      border-radius: 6px; padding: 7px 9px; width: 100%; height: 80px; resize: none; user-select: text; }
+    textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .actions { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
+    #skip { background: none; border: none; color: var(--muted); text-decoration: underline; padding: 6px 0; }
+    #error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>How did it go?</h1>
+  <section id="goalSection">
+    <h2>Did you reach your goal?</h2>
+    <div class="seg" id="goalChoice" role="group" aria-label="Did you reach your goal?">
+      <button type="button" data-v="yes" aria-pressed="false">Yes</button>
+      <button type="button" data-v="partly" aria-pressed="false">Partly</button>
+      <button type="button" data-v="no" aria-pressed="false">No</button>
+    </div>
+  </section>
+  <h2>What got in the way?</h2>
+  <div class="chips" id="chips" role="group" aria-label="What got in the way?"></div>
+  <h2>Anything else? (optional)</h2>
+  <textarea id="note" maxlength="500" aria-label="Note"></textarea>
+  <div id="error" role="alert"></div>
+  <div class="actions">
+    <button id="skip" type="button">Skip</button>
+    <button id="save" class="primary" type="button">Save</button>
+  </div>
+  <script src="reflection.js"></script>
+</body>
+</html>

@@ -62,14 +62,30 @@ async function main(): Promise<void> {
     if (phase === 'break' || phase === 'awaitingNext') showWindow('break');
   };
 
+  let quitting = false;
+  app.on('before-quit', () => { quitting = true; });
+
+  /** Reflection, then summary, then the start window. Closing a window early just moves on. */
+  const showSummary = (id: number) => {
+    const win = showWindow('summary', { query: { session: String(id) }, focus: true });
+    const next = () => { if (!quitting && ctrl.sessionId === null) showWindow('start'); };
+    if (win) win.once('closed', next); else next();
+  };
+  const showReflection = (id: number) => {
+    const goal = db.sessions(0).find((s) => s.id === id)?.info.goal;
+    const win = showWindow('reflection', { query: { session: String(id), ...(goal ? { goal: '1' } : {}) }, focus: true });
+    if (!win) { showSummary(id); return; }
+    win.once('closed', () => { if (!quitting) showSummary(id); });
+  };
+
   const endSession = () => {
+    if (ctrl.sessionId === null) return;
     const id = ctrl.end();
     log('session ended', id);
     closeWindow('mini');
     closeWindow('break');
     tray.refresh();
-    // Task 14 replaces this with the reflection → summary flow.
-    showWindow('start');
+    showReflection(id);
   };
 
   const checkinUi = createCheckinUi((a) => checkins.answer(a));

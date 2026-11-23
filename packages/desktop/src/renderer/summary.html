@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Session summary</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { padding: 22px 24px; overflow-y: auto; }
+    h1 { font-size: 18px; margin: 0 0 2px; font-weight: 600; }
+    .sub { color: var(--muted); margin-bottom: 14px; }
+    .total { font-size: 34px; font-weight: 600; color: var(--accent); }
+    section { margin-top: 16px; }
+    h2 { font-size: 13px; margin: 0 0 6px; font-weight: 600; color: var(--muted); }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+    #bypasses h2 { color: var(--warn); }
+    .actions { margin-top: 22px; text-align: right; }
+  </style>
+</head>
+<body>
+  <h1 id="topic">Session summary</h1>
+  <div class="sub" id="goal"></div>
+  <div class="total" id="total"></div>
+  <div class="muted" id="vs"></div>
+  <section><h2>Blocks completed</h2><div id="blocks"></div></section>
+  <section><h2>Slips</h2><ul id="slips"></ul></section>
+  <section><h2>Check-ins</h2><ul id="checkins"></ul></section>
+  <section><h2>Overruns</h2><div id="overruns"></div></section>
+  <section id="bypasses" class="hidden"><h2>Bypasses</h2><ul id="bypassList"></ul></section>
+  <div class="actions"><button id="done" class="primary" type="button">Done</button></div>
+  <script src="summary.js"></script>
+</body>
+</html>

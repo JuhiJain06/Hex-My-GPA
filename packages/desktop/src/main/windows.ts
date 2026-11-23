@@ -84,6 +84,19 @@ const promptOptions = (): BrowserWindowConstructorOptions => ({
 defineWindow('prompt', { html: 'prompt', inactive: true, options: promptOptions });
 defineWindow('offer', { html: 'prompt', inactive: true, options: promptOptions });
 
+defineWindow('reflection', {
+  html: 'reflection',
+  options: () => ({ width: 420, height: 560, resizable: false, title: 'How did it go?' }),
+});
+defineWindow('summary', {
+  html: 'summary',
+  options: () => ({ width: 440, height: 600, resizable: false, title: 'Session summary' }),
+});
+defineWindow('history', {
+  html: 'history',
+  options: () => ({ width: 560, height: 560, resizable: false, title: 'History' }),
+});
+
 const base = (): BrowserWindowConstructorOptions => ({
   show: false,
   autoHideMenuBar: true,

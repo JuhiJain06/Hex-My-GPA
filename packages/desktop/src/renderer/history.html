@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>History</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { padding: 22px 24px; overflow-y: auto; }
+    h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+    h2 { font-size: 13px; margin: 20px 0 8px; font-weight: 600; color: var(--muted); }
+    #streak { color: var(--accent); margin-bottom: 8px; }
+    #bars { display: flex; align-items: flex-end; gap: 3px; height: 190px; border-bottom: 1px solid var(--line); }
+    .col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+    .col .bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; }
+    .col .bar.today { background: var(--warn); }
+    .col .val { font-size: 9px; color: var(--muted); height: 12px; line-height: 12px; white-space: nowrap; }
+    .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 4px; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--line); }
+  </style>
+</head>
+<body>
+  <h1>Last 30 days</h1>
+  <div id="streak"></div>
+  <div id="bars" aria-label="Focus minutes per day"></div>
+  <div class="axis"><span id="from"></span><span>today</span></div>
+  <h2>What gets in the way most</h2>
+  <ul id="tags"></ul>
+  <script src="history.js"></script>
+</body>
+</html>

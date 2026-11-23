@@ -4,7 +4,12 @@ import type { SessionController } from './controller';
 import { closeBySender, showWindow } from './windows';
 import { parseCheckinAnswer } from './checkins';
 import { parseOfferAnswer, parsePromptAnswer } from './appGuard';
-import { IPC, type OfferAnswerMsg, type StartRequest, type WindowName } from '../shared/ipc';
+import { summarize } from '@study-buddy/core';
+import { buildHistory } from './history';
+import { parseReflection } from './reflection';
+import { IPC, type HistoryView, type OfferAnswerMsg, type StartRequest, type SummaryView, type WindowName } from '../shared/ipc';
+
+const DAY_MS = 86_400_000;
 
 export interface IpcDeps {
   ctrl: SessionController;
@@ -69,6 +74,27 @@ export function registerIpc(deps: IpcDeps): void {
     return { ok: true };
   });
   handle(IPC.blockingOff, (p) => typeof p === 'string' && ctrl.turnOffBlocking(p));
+
+  const finishedSession = (id: unknown) =>
+    typeof id === 'number' && Number.isInteger(id) ? db.sessions(0).find((s) => s.id === id) : undefined;
+
+  handle(IPC.summaryGet, (p): SummaryView | null => {
+    const record = finishedSession(p);
+    if (!record) return null;
+    const since = Date.now() - 30 * DAY_MS;
+    const previous = db.sessions(since).filter((s) => s.id !== record.id);
+    return { topic: record.info.topic, mode: record.info.mode, goal: record.info.goal, summary: summarize(record, previous) };
+  });
+  handle(IPC.historyGet, (): HistoryView => buildHistory(db, Date.now(), ctrl.liveIntervals()));
+  handle(IPC.reflectionSave, (p) => {
+    const r = parseReflection(p);
+    if (!r) return { ok: false };
+    const record = finishedSession(r.sessionId);
+    if (!record || db.hasReflection(r.sessionId)) return { ok: false };
+    if (r.goal !== null && !record.info.goal) return { ok: false };
+    db.saveReflection(r.sessionId, { at: Date.now(), goal: r.goal, tags: r.tags, note: r.note });
+    return { ok: true };
+  });
 
   on(IPC.sessionEnd, () => { if (ctrl.sessionId !== null) endSession(); });
   on(IPC.sessionResume, () => ctrl.resume());

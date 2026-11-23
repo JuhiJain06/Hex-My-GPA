@@ -27,6 +27,7 @@ export interface Db {
   finishSession(id: number, snap: EngineState, endedAt: number): void;
   addEvent(id: number, e: BuddyEvent): void;
   saveReflection(id: number, r: Reflection): void;
+  hasReflection(id: number): boolean;
   sessions(sinceMs: number): SessionRecord[];
   reflections(sinceMs: number): { at: number; tags: string[] }[];
   intervalsSince(sinceMs: number): [number, number][];
@@ -172,6 +173,9 @@ export async function openDb(filePath: string, opts: OpenDbOptions = {}): Promis
     saveReflection(id, r) {
       run('INSERT INTO reflections (session_id, at, goal, tags_json, note) VALUES (?, ?, ?, ?, ?)', [id, r.at, r.goal, JSON.stringify(r.tags), r.note]);
       persist();
+    },
+    hasReflection(id) {
+      return all('SELECT 1 AS x FROM reflections WHERE session_id = ? LIMIT 1', [id]).length > 0;
     },
     sessions(sinceMs) {
       return all('SELECT id, info_json, ended_at, blocks_completed FROM sessions WHERE ended_at IS NOT NULL AND ended_at >= ? ORDER BY ended_at ASC, id ASC', [sinceMs]).map((r) => {
