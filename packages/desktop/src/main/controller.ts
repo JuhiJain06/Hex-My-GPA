@@ -42,6 +42,7 @@ export class SessionController extends EventEmitter {
   private suggestion: string | null = null;
   private lastSuggestion: string | null = null;
   private extConnected = false;
+  private videos: string[] = [];
   /** Finished-session intervals from the db for the streak window; refreshed per day and after end(). */
   private history: { day: string; intervals: [number, number][] } | null = null;
 
@@ -82,6 +83,7 @@ export class SessionController extends EventEmitter {
     if (this.id !== null) this.end();
     this.eng = new SessionEngine(this.rhythm());
     this.suggestion = null;
+    this.videos = [];
     const events = this.eng.start(info, now);
     this.id = this.db.createSession(this.eng.state.session!);
     this.after(events, true);
@@ -120,6 +122,7 @@ export class SessionController extends EventEmitter {
     for (const e of events) this.emit('engine', e);
     this.id = null;
     this.suggestion = null;
+    this.videos = [];
     this.eng = new SessionEngine(this.rhythm());
     this.history = null;
     this.emitUi();
@@ -141,6 +144,14 @@ export class SessionController extends EventEmitter {
     session.topic = t;
     this.save(this.clock());
     this.emitUi();
+  }
+
+  /** YouTube video ids the user marked as study material this session. */
+  studyVideos(): string[] { return [...this.videos]; }
+
+  addStudyVideo(id: string): void {
+    if (this.id === null || !id || this.videos.includes(id)) return;
+    this.videos.push(id);
   }
 
   setExtensionConnected(connected: boolean): void {

@@ -266,4 +266,21 @@ describe('SessionController', () => {
     const rec = db.sessions(0).find((s) => s.id === id)!;
     expect(rec.events).toEqual([{ at: T0 + 5 * S, kind: 'slip', target: 'x.com', detail: null }]);
   });
+
+  test('study videos: added per session, de-duplicated, reset on end and start', () => {
+    const c = new SessionController(db, clock);
+    c.addStudyVideo('ignored');
+    expect(c.studyVideos()).toEqual([]);
+    c.start(info);
+    c.addStudyVideo('abc');
+    c.addStudyVideo('abc');
+    c.addStudyVideo('def');
+    expect(c.studyVideos()).toEqual(['abc', 'def']);
+    c.end();
+    expect(c.studyVideos()).toEqual([]);
+    c.start(info);
+    c.addStudyVideo('x');
+    c.start(info);
+    expect(c.studyVideos()).toEqual([]);
+  });
 });
