@@ -4,7 +4,8 @@ import type { EngineEvent } from '@study-buddy/core';
 import { openDb } from './db';
 import { SessionController, type UiState } from './controller';
 import { autostartTopic, dataDirOverride, debug, fastMode, rhythmOverride } from './config';
-import { broadcast, closeWindow, focusWindow, getWindow, showWindow } from './windows';
+import { broadcast, closeWindow, showWindow } from './windows';
+import { breakWindowAction } from './breakFlow';
 import { registerIpc } from './ipc';
 import { createTray } from './tray';
 import { unbindAllHotkeys } from './hotkeys';
@@ -80,26 +81,11 @@ async function main(): Promise<void> {
   });
 
   function onEngineEvent(e: EngineEvent): void {
-    switch (e.type) {
-      case 'breakStarted':
-        showWindow('break');
-        break;
-      case 'breakOneMinuteLeft':
-        focusWindow('break');
-        break;
-      case 'breakEnded':
-        if (!getWindow('break')) showWindow('break');
-        focusWindow('break');
-        break;
-      case 'focusStarted':
-        closeWindow('break');
-        break;
-      case 'plannedLengthReached':
-        showWindow('mini');
-        break;
-      default:
-        break;
-    }
+    const action = breakWindowAction(e);
+    if (action === 'show') showWindow('break');
+    else if (action === 'showFocused') showWindow('break', { focus: true });
+    else if (action === 'close') closeWindow('break');
+    if (e.type === 'plannedLengthReached') showWindow('mini');
   }
 
   registerIpc({

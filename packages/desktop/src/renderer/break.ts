@@ -1,4 +1,5 @@
 import { $, buddy, chime, IPC, mmss, onEngine, onState, type UiState } from './api';
+import { breakChime } from './breakChime';
 
 let state: UiState | null = null;
 let chimedForBreak = false;
@@ -17,15 +18,14 @@ function render(): void {
 
 onState((s) => {
   state = s;
-  // The window opens on breakStarted (before it can hear that event), so it chimes on first sight of the break.
-  if (s.phase === 'break' && !chimedForBreak) {
+  if (breakChime({ kind: 'state', state: s }, chimedForBreak)) {
     chimedForBreak = true;
     chime();
   }
   render();
 });
 onEngine((e) => {
-  if (e.type === 'breakOneMinuteLeft' || e.type === 'breakEnded') chime();
+  if (breakChime({ kind: 'event', event: e }, chimedForBreak)) chime();
 });
 setInterval(render, 250);
 
