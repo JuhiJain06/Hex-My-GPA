@@ -1,11 +1,14 @@
 import { app, powerMonitor } from 'electron';
 import { join } from 'node:path';
-import type { EngineEvent } from '@study-buddy/core';
+import { DEFAULT_SETTINGS, type EngineEvent, type Lists } from '@study-buddy/core';
 import { openDb } from './db';
 import { SessionController, type UiState } from './controller';
 import { autostartTopic, dataDirOverride, debug, fastMode, rhythmOverride } from './config';
 import { CheckinRunner, FAST_CHECKIN_CONFIG } from './checkins';
 import { createCheckinUi } from './checkinUi';
+import { AppGuard, type GuardUi } from './appGuard';
+import { createGuardUi } from './appGuardUi';
+import { startForegroundPolling, type ForegroundWindow } from './foreground';
 import { broadcast, closeWindow, showWindow } from './windows';
 import { breakWindowAction } from './breakFlow';
 import { registerIpc } from './ipc';
@@ -34,7 +37,7 @@ async function main(): Promise<void> {
   app.setAppUserModelId('study.buddy');
   const db = await openDb(join(app.getPath('userData'), 'study-buddy.sqlite'));
   const ctrl = new SessionController(db, Date.now, { rhythm: rhythmOverride });
-  if (fastMode) console.log('[buddy] fast mode: 1/1/2 min rhythm');
+  if (fastMode) console.log('[buddy] fast mode: 3/1/2 min rhythm');
 
   /** Mini window query: phone reminder on a fresh start, planned length for the prompt. */
   const miniQuery = (fresh: boolean): Record<string, string> => {
@@ -71,6 +74,49 @@ async function main(): Promise<void> {
     Math.random,
     fastMode ? FAST_CHECKIN_CONFIG : undefined,
   );
+
+  // App guard: foreground app → overlay / gray prompt / unlisted offer while blocking is active.
+  let lastFg: ForegroundWindow | null = null;
+  const guardUi = createGuardUi({
+    foreground: () => lastFg,
+    topic: () => ctrl.engine.state.session?.topic ?? null,
+    answerPrompt: (exe, study) => guard.answerPrompt(exe, study),
+  });
+  const loggedGuardUi: GuardUi = {
+    showOverlay: (r) => { log('overlay shown', JSON.stringify(r)); guardUi.showOverlay(r); },
+    hideOverlay: () => { log('overlay hidden'); guardUi.hideOverlay(); },
+    showPrompt: (exe) => { log('prompt shown', exe); guardUi.showPrompt(exe); },
+    hidePrompt: () => { log('prompt hidden'); guardUi.hidePrompt(); },
+    showOffer: (exe) => { log('offer shown', exe); guardUi.showOffer(exe); },
+  };
+  const getApps = (): Lists => {
+    try { return db.getSettings().apps; } catch (err) {
+      console.error('[buddy] getSettings failed', err);
+      return DEFAULT_SETTINGS.apps;
+    }
+  };
+  /** Our main process or any of our child processes (renderers, GPU, ...). */
+  const isOwnPid = (pid: number): boolean =>
+    pid === process.pid || app.getAppMetrics().some((m) => m.pid === pid);
+  const guard = new AppGuard(
+    ctrl,
+    loggedGuardUi,
+    getApps,
+    () => true, // Task 10 replaces this with the extension's browser coverage.
+    isOwnPid,
+    Date.now,
+    (fn) => {
+      const s = db.getSettings();
+      db.saveSettings({ ...s, apps: fn(s.apps) });
+      log('apps updated', JSON.stringify(db.getSettings().apps.hard));
+    },
+  );
+  startForegroundPolling((fg) => {
+    const own = fg !== null && isOwnPid(fg.pid);
+    if (fg && !own) lastFg = fg;
+    log('foreground', fg ? `${fg.exe} pid=${fg.pid}${own ? ' (ours)' : ` → ${guard.classify(fg.exe)}`}` : 'none');
+    try { guard.onForeground(fg); } catch (err) { console.error('[buddy] guard failed', err); }
+  });
 
   const tray = createTray({
     open: () => (ctrl.sessionId !== null ? showSessionWindows(false) : showWindow('start')),
@@ -114,6 +160,13 @@ async function main(): Promise<void> {
     endSession,
     onCheckinAnswer: (a, topic) => { log('check-in answer', JSON.stringify(a)); checkins.answer(a, topic); },
     focusCheckin: (id) => checkinUi.focus(id),
+    onPromptAnswer: (exe, study) => { log('prompt answer', exe, study); guard.answerPrompt(exe, study); },
+    onOfferAnswer: (exe, choice) => {
+      log('offer answer', exe, choice);
+      guardUi.hideOffer();
+      guard.answerOffer(exe, choice);
+    },
+    dismissOverlay: () => { log('overlay dismissed'); guardUi.hideOverlay(); },
   });
 
   app.on('second-instance', () => (ctrl.sessionId !== null ? showSessionWindows(false) : showWindow('start')));
@@ -142,6 +195,7 @@ async function main(): Promise<void> {
   setInterval(() => {
     try { ctrl.tick(); } catch (err) { console.error('[buddy] tick failed', err); }
     try { checkins.tick(); } catch (err) { console.error('[buddy] check-in tick failed', err); }
+    try { guard.tick(); } catch (err) { console.error('[buddy] guard tick failed', err); }
   }, 1000);
   console.log('[buddy] ready');
 }

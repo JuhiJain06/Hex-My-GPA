@@ -17,7 +17,12 @@ export const IPC = {
   checkinFocus: 'checkin:focus',
   /** M→R: Ctrl+Alt+S pressed; the check-in window should open its new-topic input. */
   checkinSwitch: 'checkin:switch',
+  /** R→M: answer to the gray-app "Is this for study?" prompt ({@link PromptAnswerMsg}). */
   promptAnswer: 'prompt:answer',
+  /** R→M: answer to the unlisted-app offer ({@link OfferAnswerMsg}). */
+  offerAnswer: 'offer:answer',
+  /** R→M: the overlay's "Back to <topic>" button; main just hides the overlay. */
+  overlayDismiss: 'overlay:dismiss',
   reflectionSave: 'reflection:save',
   settingsGet: 'settings:get',
   settingsSave: 'settings:save',
@@ -63,8 +68,15 @@ export type CheckinAnswerMsg =
   | { answer: 'switched'; topic: string }
   | { answer: 'pages'; pages: number };
 
-/** Windows a renderer may ask main to open (`window:open`). Later tasks add names here. */
-export type WindowName = 'start' | 'mini' | 'break' | 'checkin' | 'bypass' | 'history' | 'settings';
+/** Payload of `prompt:answer`. */
+export interface PromptAnswerMsg { exe: string; study: boolean }
+
+/** Payload of `offer:answer`. */
+export interface OfferAnswerMsg { exe: string; choice: 'block' | 'fine' | 'later' }
+
+/** Every window main can show (renderers may open only the `OPENABLE` subset). Later tasks add names here. */
+export type WindowName =
+  | 'start' | 'mini' | 'break' | 'checkin' | 'overlay' | 'prompt' | 'offer' | 'bypass' | 'history' | 'settings';
 
 export type EngineEventMsg = EngineEvent;
 

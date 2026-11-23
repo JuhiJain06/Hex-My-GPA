@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { SHORT_SUGGESTIONS, type EngineEvent } from '@study-buddy/core';
 import { openDb, type Db } from '../src/main/db';
 import { SessionController, type UiState } from '../src/main/controller';
+import { FAST_RHYTHM } from '../src/main/config';
 
 const S = 1000;
 const M = 60_000;
@@ -243,13 +244,15 @@ describe('SessionController', () => {
   });
 
   test('rhythm override (fast mode) is used instead of settings', () => {
-    const c = new SessionController(db, clock, {
-      rhythm: { focusMin: 1, shortBreakMin: 1, longBreakMin: 2, longBreakEvery: 3 },
-    });
+    // 3-min fast focus so 1-min fast check-ins can appear before the break.
+    expect(FAST_RHYTHM).toEqual({ focusMin: 3, shortBreakMin: 1, longBreakMin: 2, longBreakEvery: 3 });
+    const c = new SessionController(db, clock, { rhythm: FAST_RHYTHM });
     const events: EngineEvent[] = [];
     c.on('engine', (e: EngineEvent) => events.push(e));
     c.start(info);
-    runTo(c, T0 + 1 * M, S);
+    runTo(c, T0 + 3 * M - S, S);
+    expect(events.map((e) => e.type)).not.toContain('breakStarted');
+    runTo(c, T0 + 3 * M, S);
     expect(events.map((e) => e.type)).toContain('breakStarted');
   });
 

@@ -64,6 +64,26 @@ defineWindow('checkin', {
   }),
 });
 
+// Full-screen block overlay; appGuardUi sets its bounds to the target display and raises it to
+// the 'screen-saver' level. Never takes focus, so the blocked app keeps the keyboard (and its text).
+defineWindow('overlay', {
+  html: 'overlay',
+  inactive: true,
+  options: () => ({
+    frame: false, transparent: true, backgroundColor: '#00000000', resizable: false, movable: false,
+    alwaysOnTop: true, skipTaskbar: true, focusable: false, hasShadow: false,
+    minimizable: false, maximizable: false, fullscreenable: false,
+  }),
+});
+
+// Gray-app prompt and unlisted-app offer: check-in style, bottom-right, positioned by appGuardUi.
+const promptOptions = (): BrowserWindowConstructorOptions => ({
+  width: 340, height: 130, frame: false, resizable: false, alwaysOnTop: true, skipTaskbar: true,
+  minimizable: false, maximizable: false, fullscreenable: false, focusable: false,
+});
+defineWindow('prompt', { html: 'prompt', inactive: true, options: promptOptions });
+defineWindow('offer', { html: 'prompt', inactive: true, options: promptOptions });
+
 const base = (): BrowserWindowConstructorOptions => ({
   show: false,
   autoHideMenuBar: true,

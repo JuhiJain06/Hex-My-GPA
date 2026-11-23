@@ -3,7 +3,8 @@ import type { Db } from './db';
 import type { SessionController } from './controller';
 import { closeBySender, showWindow } from './windows';
 import { parseCheckinAnswer } from './checkins';
-import { IPC, type StartRequest, type WindowName } from '../shared/ipc';
+import { parseOfferAnswer, parsePromptAnswer } from './appGuard';
+import { IPC, type OfferAnswerMsg, type StartRequest, type WindowName } from '../shared/ipc';
 
 export interface IpcDeps {
   ctrl: SessionController;
@@ -16,6 +17,12 @@ export interface IpcDeps {
   onCheckinAnswer(a: 'yes' | 'switched' | 'drifted' | { pages: number }, topic?: string): void;
   /** Make the check-in window focusable and focus it (for typing). */
   focusCheckin(senderId: number): void;
+  /** Gray-app prompt answer (already validated). */
+  onPromptAnswer(exe: string, study: boolean): void;
+  /** Unlisted-app offer answer (already validated). */
+  onOfferAnswer(exe: string, choice: OfferAnswerMsg['choice']): void;
+  /** The overlay's button: hide the overlay. */
+  dismissOverlay(): void;
 }
 
 /** Windows a renderer may open by name. */
@@ -50,7 +57,8 @@ export function parseStart(p: unknown): StartRequest | null {
   return { topic, mode, goal, plannedMin: pm };
 }
 
-export function registerIpc({ ctrl, db, onStarted, endSession, onCheckinAnswer, focusCheckin }: IpcDeps): void {
+export function registerIpc(deps: IpcDeps): void {
+  const { ctrl, db, onStarted, endSession, onCheckinAnswer, focusCheckin } = deps;
   handle(IPC.state, () => ctrl.uiState());
   handle(IPC.settingsGet, () => db.getSettings());
   handle(IPC.sessionStart, (p) => {
@@ -72,6 +80,15 @@ export function registerIpc({ ctrl, db, onStarted, endSession, onCheckinAnswer, 
     if (r) onCheckinAnswer(r.a, r.topic);
   });
   on(IPC.checkinFocus, (_p, e) => focusCheckin(e.sender.id));
+  on(IPC.promptAnswer, (p) => {
+    const r = parsePromptAnswer(p);
+    if (r) deps.onPromptAnswer(r.exe, r.study);
+  });
+  on(IPC.offerAnswer, (p) => {
+    const r = parseOfferAnswer(p);
+    if (r) deps.onOfferAnswer(r.exe, r.choice);
+  });
+  on(IPC.overlayDismiss, () => deps.dismissOverlay());
   on(IPC.windowOpen, (p) => {
     if (typeof p === 'string' && (OPENABLE as readonly string[]).includes(p)) showWindow(p as WindowName, { focus: true });
   });

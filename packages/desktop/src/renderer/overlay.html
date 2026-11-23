@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Blocked</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    html, body { background: rgba(14, 15, 19, 0.93); }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
+    #msg { font-size: 34px; font-weight: 600; }
+    #label { color: var(--muted); font-size: 16px; }
+    #back { font-size: 16px; padding: 10px 22px; }
+  </style>
+</head>
+<body>
+  <div id="msg">Blocked until break at --:--</div>
+  <div id="label"></div>
+  <button id="back" class="primary">Back to studying</button>
+  <script src="overlay.js"></script>
+</body>
+</html>

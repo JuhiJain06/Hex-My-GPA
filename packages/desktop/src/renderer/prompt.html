@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Study Buddy</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); }
+    .kicker { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    #q { font-size: 15px; font-weight: 600; }
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btns button { padding: 7px 12px; }
+    kbd { font: 11px/1 monospace; color: var(--muted); margin-left: 4px; }
+  </style>
+</head>
+<body>
+  <div class="kicker" id="app"></div>
+  <div id="q"></div>
+  <div id="gray" class="btns hidden">
+    <button id="yes" class="primary">Yes<kbd>Ctrl+Alt+Y</kbd></button>
+    <button id="no">No<kbd>Ctrl+Alt+N</kbd></button>
+  </div>
+  <div id="offer" class="btns hidden">
+    <button id="block" class="primary">Block</button>
+    <button id="fine">It's for study</button>
+    <button id="later">Not now</button>
+  </div>
+  <script src="prompt.js"></script>
+</body>
+</html>
