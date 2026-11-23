@@ -11,6 +11,8 @@
   "content_scripts": [
     { "matches": ["*://*.youtube.com/*"], "js": ["youtube.js"], "run_at": "document_start" }
   ],
+  "action": {},
+  "side_panel": { "default_path": "sidepanel.html" },
   "options_ui": { "page": "options.html", "open_in_tab": true },
   "web_accessible_resources": [
     { "resources": ["blocked.html", "blocked.js"], "matches": ["<all_urls>"] }

@@ -1,0 +1,35 @@
+import { expect, test } from 'vitest';
+import { formatHm, formatTimeLeft, parsePanelStart } from '../src/panelLogic';
+
+test('parsePanelStart validates and maps to startSession', () => {
+  expect(parsePanelStart({ type: 'panel-start', topic: ' Calculus ', mode: 'book', goal: ' ch 3 ', plannedMin: 90 }))
+    .toEqual({ t: 'startSession', topic: 'Calculus', mode: 'book', goal: 'ch 3', plannedMin: 90 });
+  expect(parsePanelStart({ type: 'panel-start', topic: 'x', mode: 'laptop', goal: '  ', plannedMin: null }))
+    .toEqual({ t: 'startSession', topic: 'x', mode: 'laptop', goal: null, plannedMin: null });
+  expect(parsePanelStart({ type: 'panel-start', topic: 'x', mode: 'laptop' }))
+    .toEqual({ t: 'startSession', topic: 'x', mode: 'laptop', goal: null, plannedMin: null });
+});
+
+test('parsePanelStart rejects bad input', () => {
+  const ok = { type: 'panel-start', topic: 'x', mode: 'laptop', goal: null, plannedMin: 30 };
+  expect(parsePanelStart(null)).toBeNull();
+  expect(parsePanelStart('x')).toBeNull();
+  for (const b of [
+    { ...ok, type: 'other' }, { ...ok, topic: '   ' }, { ...ok, topic: 5 }, { ...ok, topic: 'a'.repeat(201) },
+    { ...ok, mode: 'phone' }, { ...ok, goal: 4 }, { ...ok, plannedMin: 0 }, { ...ok, plannedMin: -5 },
+    { ...ok, plannedMin: Infinity }, { ...ok, plannedMin: '30' },
+  ]) expect(parsePanelStart(b)).toBeNull();
+});
+
+test('formatTimeLeft', () => {
+  expect(formatTimeLeft(null, 0)).toBe('--:--');
+  expect(formatTimeLeft(65_000, 0)).toBe('01:05');
+  expect(formatTimeLeft(1000, 5000)).toBe('00:00');
+  expect(formatTimeLeft(3_600_000 + 1, 0)).toBe('60:01');
+});
+
+test('formatHm', () => {
+  expect(formatHm(0)).toBe('0h 0m');
+  expect(formatHm(5_400_000)).toBe('1h 30m');
+  expect(formatHm(-5)).toBe('0h 0m');
+});

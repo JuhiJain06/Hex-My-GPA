@@ -4,7 +4,7 @@ import { Bridge } from '../src/main/bridge';
 import type { BrowserKind } from '@study-buddy/core';
 
 const SECRET = 's3cret-value';
-const STATE = { t: 'state' as const, phase: 'focus' as const, blocking: true, topic: 'Maths', phaseEndsAt: 123, sites: { hard: [], gray: [] } as never, studyVideos: [] };
+const STATE = { t: 'state' as const, phase: 'focus' as const, blocking: true, topic: 'Maths', phaseEndsAt: 123, sites: { hard: [], gray: [] } as never, studyVideos: [], todayMs: 0, streakDays: 0 };
 
 let bridge: Bridge;
 let clients: WebSocket[] = [];

@@ -3,7 +3,7 @@ import { parseDesktopMessage } from '../src/messages';
 
 const state = {
   t: 'state', phase: 'focus', blocking: true, topic: 'Calculus', phaseEndsAt: 1700000000000,
-  sites: { fine: ['khanacademy.org'], gray: ['youtube.com'], hard: ['instagram.com'] }, studyVideos: ['abc123'],
+  sites: { fine: ['khanacademy.org'], gray: ['youtube.com'], hard: ['instagram.com'] }, studyVideos: ['abc123'], todayMs: 5400000, streakDays: 3,
 };
 
 test('parses helloAck', () => {
@@ -30,6 +30,11 @@ test('rejects malformed state', () => {
     { ...state, sites: { fine: [], gray: [1], hard: [] } },
     { ...state, studyVideos: 'abc' },
     { ...state, studyVideos: [null] },
+    { ...state, todayMs: -1 },
+    { ...state, todayMs: '5' },
+    { ...state, streakDays: -2 },
+    { ...state, streakDays: null },
+    { ...state, todayMs: undefined },
   ];
   for (const b of bad) expect(parseDesktopMessage(JSON.stringify(b))).toBeNull();
   expect(parseDesktopMessage(JSON.stringify(state).replace('1700000000000', '1e999'))).toBeNull(); // Infinity

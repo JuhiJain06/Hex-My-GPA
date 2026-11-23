@@ -190,9 +190,8 @@ async function main(): Promise<void> {
     ctrl.pause(Date.now());
   });
 
-  const broadcastState = () => {
+  const broadcastState = (ui: UiState = ctrl.uiState()) => {
     if (!bridge) return;
-    const ui = ctrl.uiState();
     let sites = DEFAULT_SETTINGS.sites;
     try { sites = db.getSettings().sites; } catch (err) { console.error('[buddy] getSettings failed', err); }
     bridge.broadcast({
@@ -203,6 +202,8 @@ async function main(): Promise<void> {
       phaseEndsAt: ui.phaseEndsAt,
       sites,
       studyVideos: ctrl.studyVideos(),
+      todayMs: ui.todayMs,
+      streakDays: ui.streakDays,
     });
   };
   ctrl.on('ui', broadcastState);

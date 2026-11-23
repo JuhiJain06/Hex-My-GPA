@@ -27,9 +27,12 @@ export function parseDesktopMessage(raw: string): DesktopToExt | null {
       if (!(end === null || (typeof end === 'number' && Number.isFinite(end)))) return null;
       const sites = parseLists(o.sites);
       if (!sites || !isStrArray(o.studyVideos)) return null;
+      const { todayMs, streakDays } = o;
+      if (typeof todayMs !== 'number' || !Number.isFinite(todayMs) || todayMs < 0) return null;
+      if (typeof streakDays !== 'number' || !Number.isFinite(streakDays) || streakDays < 0) return null;
       return {
         t: 'state', phase: o.phase as Phase, blocking: o.blocking, topic: o.topic,
-        phaseEndsAt: end, sites, studyVideos: [...o.studyVideos],
+        phaseEndsAt: end, sites, studyVideos: [...o.studyVideos], todayMs, streakDays,
       };
     }
     default:

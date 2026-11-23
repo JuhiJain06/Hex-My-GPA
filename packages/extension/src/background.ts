@@ -4,6 +4,7 @@
 import { BRIDGE_PORT, type DesktopToExt, type ExtToDesktop } from '@study-buddy/core';
 import { createConnector } from './connector';
 import { parseDesktopMessage } from './messages';
+import { parsePanelStart } from './panelLogic';
 import { backoffMs, buildBlockRules, sameRules, shouldBlockOffline } from './rules';
 import { browserKind, windowReports } from './util';
 import { parseYtMessage, ytStateFor } from './youtubeLogic';
@@ -82,6 +83,7 @@ async function applyOffline(): Promise<void> {
 async function onState(s: StateMsg): Promise<void> {
   await chrome.storage.local.set({ lastState: s });
   await pushYt();
+  await pushPanel();
   await setRules(rulesFor(s));
 }
 
@@ -102,6 +104,23 @@ async function pushYt(only?: chrome.runtime.Port): Promise<void> {
   for (const p of targets) {
     if (!ytPorts.has(p)) continue;
     try { p.postMessage(st); } catch { ytPorts.delete(p); }
+  }
+}
+
+// ---------- side panel ----------
+
+// The panel holds a `panel` port and reconnects when this worker dies, so the set only holds live
+// ports and every (re)connect gets the current connection + state immediately.
+const panelPorts = new Set<chrome.runtime.Port>();
+
+async function pushPanel(only?: chrome.runtime.Port): Promise<void> {
+  const targets = only ? [only] : [...panelPorts];
+  if (targets.length === 0) return;
+  const connected = helloed;
+  const state = connected ? await loadLastState() : null;
+  for (const p of targets) {
+    if (!panelPorts.has(p)) continue;
+    try { p.postMessage({ connected, state }); } catch { panelPorts.delete(p); }
   }
 }
 
@@ -159,6 +178,7 @@ function openSocket(hello: Hello): void {
       void chrome.alarms.clear(OFFLINE_END_ALARM);
       startPing();
       scheduleWindows();
+      void pushPanel();
     } else if (helloed) {
       void onState(msg);
     }
@@ -169,6 +189,7 @@ function openSocket(hello: Hello): void {
     helloed = false;
     stopPing();
     void applyOffline();
+    void pushPanel();
     scheduleRetry();
   };
   sock.onerror = () => { /* onclose follows */ };
@@ -187,6 +208,7 @@ function reconnectNow(): void {
   helloed = false;
   stopPing();
   if (old) { old.onclose = null; old.close(); }
+  void pushPanel();
   connector.invalidate(); // an attempt already awaiting must not open with the old code
   void connect();
 }
@@ -234,7 +256,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 type PageMessage = { t: 'slip'; target: unknown } | { t: 'status' } | { t: 'recheck' };
 
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== 'yt' || port.sender?.id !== chrome.runtime.id) { port.disconnect(); return; }
+  if (port.sender?.id !== chrome.runtime.id) { port.disconnect(); return; }
+  if (port.name === 'panel') {
+    panelPorts.add(port);
+    port.onDisconnect.addListener(() => panelPorts.delete(port));
+    void pushPanel(port);
+    return;
+  }
+  if (port.name !== 'yt') { port.disconnect(); return; }
   ytPorts.add(port);
   port.onDisconnect.addListener(() => ytPorts.delete(port));
   void pushYt(port);
@@ -247,6 +276,12 @@ chrome.runtime.onMessage.addListener((msg: PageMessage, sender, reply) => {
     // From the YouTube content script; validated, then forwarded if connected, else dropped.
     const out = parseYtMessage(msg, sender);
     if (out) send(out);
+    return false;
+  }
+  if (yt === 'panel-start') {
+    // Only from our own extension pages (the side panel), never content scripts.
+    const out = sender.url?.startsWith(chrome.runtime.getURL('/sidepanel.html')) ? parsePanelStart(msg) : null;
+    reply({ ok: out !== null && send(out) });
     return false;
   }
   if (msg?.t === 'slip') {
@@ -275,5 +310,6 @@ chrome.runtime.onInstalled.addListener(() => { /* ditto */ });
 
 // ---------- startup ----------
 
+void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((err) => console.error('[study-buddy] sidePanel', err));
 void chrome.alarms.create(RECONNECT_ALARM, { periodInMinutes: 1 });
 void connect();

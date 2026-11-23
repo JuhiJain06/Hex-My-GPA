@@ -134,7 +134,7 @@ test('prompt card: closed shadow root, text, yes/no callbacks, show/hide', () =>
 test('content state: live when connected, offline only inside the last focus block', () => {
   const last = {
     t: 'state' as const, phase: 'focus' as const, blocking: true, topic: 'Calc', phaseEndsAt: 5000,
-    sites: { fine: [], gray: [], hard: [] }, studyVideos: ['abc123'],
+    sites: { fine: [], gray: [], hard: [] }, studyVideos: ['abc123'], todayMs: 0, streakDays: 0,
   };
   expect(ytStateFor(last, true, 9999)).toEqual({ blocking: true, topic: 'Calc', studyVideos: ['abc123'] });
   expect(ytStateFor(last, false, 4999).blocking).toBe(true);

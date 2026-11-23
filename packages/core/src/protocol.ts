@@ -7,7 +7,7 @@ export interface WindowReport { title: string; incognito: boolean; focused: bool
 
 export type DesktopToExt =
   | { t: 'helloAck'; ok: boolean }
-  | { t: 'state'; phase: Phase; blocking: boolean; topic: string | null; phaseEndsAt: number | null; sites: Lists; studyVideos: string[] };
+  | { t: 'state'; phase: Phase; blocking: boolean; topic: string | null; phaseEndsAt: number | null; sites: Lists; studyVideos: string[]; todayMs: number; streakDays: number };
 
 export type ExtToDesktop =
   | { t: 'hello'; secret: string; browser: BrowserKind; incognitoAllowed: boolean }
