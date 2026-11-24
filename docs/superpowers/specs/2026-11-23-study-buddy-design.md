@@ -169,3 +169,30 @@ Any site not on a list is treated as fine (Claude's call: the safe default again
 - The exact default game-site list.
 - Packaging/installer approach for the desktop app, and how the extension is loaded (unpacked is fine for a personal tool).
 - Build order. A sensible order is: desktop timer + mini window, then the extension with blocking, then the link between them, then check-ins, then stats.
+
+## Addendum (2026-11-25): Cute animal companion and pastel look
+
+User request: "make it cute animal like". User chose: pick the animal in Settings, offer a variety of animals including a fox, and give the whole app a soft pastel look.
+
+### Animal companion
+- **Animals (6):** Cat, Fox, Panda, Bunny, Penguin, Hamster. Default: Cat. Chosen in Settings ("Your study buddy") with a preview of each; the choice is saved in settings.
+- **Original art, drawn in code:** each animal is a simple, round, chibi-style SVG built from shapes (no image files, no copied characters). All animals share one face/pose system so moods work the same for every animal.
+- **Where it appears:** the mini window (small, beside the timer), the break window (larger), the start window (waving), and the summary (happy, or encouraging if the session was short).
+- **Moods, driven by app state:**
+  | State | Mood |
+  |---|---|
+  | Idle / start screen | Waves hello |
+  | Focus | Content, gentle breathing, occasional blink; "studying" prop (tiny book) |
+  | Break | Stretches, then relaxed; holds a cup |
+  | 1-minute warning / "Back to topic?" | Perks up, looks at you |
+  | Paused (away) | Curls up asleep, "z z" |
+  | Slip / drifted / blocked app or site | Briefly sad (3 s), then back to content — never scolding |
+  | Planned length reached / session summary | Celebrates (little hearts/sparkles) |
+- **Animations:** subtle CSS animations only (breathing, blinking, tail/ear wiggle). Respect `prefers-reduced-motion` (static poses).
+- **Calm rule still applies:** the animal never pops up on its own or makes sound; it only lives inside existing windows.
+
+### Pastel look
+- One shared theme (`common.css` tokens): soft pastel palette (cream background, peach/mint/lavender accents), rounded corners, rounded friendly font stack, gentle shadows. Applied to all desktop windows and the extension pages (blocked page, side panel, options, YouTube prompt card).
+- Text contrast stays readable (WCAG AA for body text). Dark mode gets a matching muted pastel-on-dark variant.
+- The blocked page and overlay show the chosen animal looking a little sad but kind: "Blocked until break at HH:MM".
+- The extension gets the chosen animal via the existing state message (add `animal` field).

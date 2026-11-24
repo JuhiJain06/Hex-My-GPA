@@ -791,3 +791,34 @@ test('restore with --restored-by-watchdog logs one app-closed bypass', () => {})
   - Killing the app → it relaunches.
   - Ending → reflection → summary with bypasses listed separately → history shows today.
 - [ ] **Step 3: Commit** any fixes: `chore: end-to-end fixes`
+
+---
+
+## Addendum tasks (2026-11-25, from spec addendum)
+
+### Task 19: Animal companion
+
+**Files:**
+- Create: `packages/core/src/animals.ts` (`ANIMALS`, `Animal`, `Mood`, `moodFor`), `packages/desktop/src/renderer/buddy/{draw.ts,buddy.css}` (SVG builder + animations)
+- Modify: core `settings.ts` (`animal: Animal`, default `'cat'`), desktop `settingsValidate.ts`, settings window (picker with previews), mini/break/start/summary renderers, overlay; protocol state gains `animal`
+- Test: `packages/core/test/animals.test.ts`, `packages/desktop/test/buddyDraw.test.ts` (jsdom)
+
+**Interfaces:**
+- `type Animal = 'cat'|'fox'|'panda'|'bunny'|'penguin'|'hamster'`; `ANIMALS: { id: Animal; label: string }[]`
+- `type Mood = 'wave'|'study'|'break'|'alert'|'sleep'|'sad'|'celebrate'`
+- `moodFor(s: { phase: Phase; paused: boolean; recentSlipAt: number | null; celebrating: boolean }, now: number): Mood` — sad for 3 s after a slip; celebrate wins; sleep when paused; alert in awaitingNext; etc.
+- `drawBuddy(animal: Animal, mood: Mood, size: number): SVGSVGElement` — built with DOM APIs only, no innerHTML; every animal × mood produces a valid SVG with a `data-mood` attribute.
+
+- [ ] Tests first for `moodFor` (each table row in the spec addendum) and `drawBuddy` (6×7 combinations render, distinct per animal, `prefers-reduced-motion` class switch).
+- [ ] Implement; wire into windows; settings picker saves `animal`; mini window gets `recentSlipAt` via a new `buddy:slip` broadcast when a slip event is logged.
+- [ ] Manual check via CDP: each mood visible in screenshots; picker changes the animal live.
+- [ ] Commit `feat: animal companion`
+
+### Task 20: Pastel theme
+
+**Files:** Modify `packages/desktop/src/renderer/common.css` (+ every window's CSS that hard-codes colors), extension `blocked`, `sidepanel`, `options` pages and the YouTube card styles; add a shared token block.
+
+- [ ] Define tokens (light + dark), replace hard-coded colors; check text contrast ≥ 4.5:1 with a small test that parses the token file and computes contrast for text/background pairs.
+- [ ] Extension pages show the chosen animal (blocked page: `sad` mood; side panel: mood from state).
+- [ ] Manual check via CDP screenshots of every window in light and dark.
+- [ ] Commit `feat: pastel theme`
