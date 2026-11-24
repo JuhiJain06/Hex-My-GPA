@@ -6,10 +6,10 @@ import { BRIDGE_PORT, DEFAULT_SETTINGS, isBrowserCovered, type BrowserKind, type
 import { Bridge } from './bridge';
 import { openDb } from './db';
 import { SessionController, type UiState } from './controller';
-import { autostartTopic, dataDirOverride, debug, fastMode, rhythmOverride } from './config';
+import { autostartTopic, dataDirOverride, debug, fastMode, noGuard, rhythmOverride } from './config';
 import { CheckinRunner, FAST_CHECKIN_CONFIG } from './checkins';
 import { createCheckinUi } from './checkinUi';
-import { AppGuard, type GuardUi } from './appGuard';
+import { AppGuard, loggingGuardUi, type GuardUi } from './appGuard';
 import { createGuardUi } from './appGuardUi';
 import { startForegroundPolling, type ForegroundWindow } from './foreground';
 import { broadcast, closeWindow, showWindow } from './windows';
@@ -147,13 +147,8 @@ async function main(): Promise<void> {
     topic: () => ctrl.engine.state.session?.topic ?? null,
     answerPrompt: (exe, study) => guard.answerPrompt(exe, study),
   });
-  const loggedGuardUi: GuardUi = {
-    showOverlay: (r) => { log('overlay shown', JSON.stringify(r)); guardUi.showOverlay(r); },
-    hideOverlay: () => { log('overlay hidden'); guardUi.hideOverlay(); },
-    showPrompt: (exe) => { log('prompt shown', exe); guardUi.showPrompt(exe); },
-    hidePrompt: () => { log('prompt hidden'); guardUi.hidePrompt(); },
-    showOffer: (exe) => { log('offer shown', exe); guardUi.showOffer(exe); },
-  };
+  // BUDDY_NO_GUARD=1: log what the guard would show, show nothing (always logged, debug or not).
+  const loggedGuardUi: GuardUi = loggingGuardUi(guardUi, noGuard ? (...a) => console.log('[buddy]', ...a) : log, noGuard);
   const getApps = (): Lists => {
     try { return db.getSettings().apps; } catch (err) {
       console.error('[buddy] getSettings failed', err);

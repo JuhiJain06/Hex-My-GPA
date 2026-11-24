@@ -1,6 +1,6 @@
 import { $, buddy, IPC } from './api';
 import { ANIMALS, type Animal, type Lists, type Settings } from '@study-buddy/core';
-import { drawBuddy } from './buddy/draw';
+import { drawBuddy } from '@study-buddy/core/buddy/draw';
 import type { SettingsSaveResult } from '../shared/ipc';
 
 const LIST_KEYS = ['fine', 'gray', 'hard'] as const;

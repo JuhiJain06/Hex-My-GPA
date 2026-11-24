@@ -4,22 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blocked · Study Buddy</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="buddy.css">
 <style>
-  :root { color-scheme: light dark; --bg: #f6f5f1; --fg: #1f2328; --muted: #6a6f76; --accent: #2f6f5e; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #16181b; --fg: #e8e6e1; --muted: #9aa0a6; --accent: #7cc4ad; } }
   html, body { height: 100%; margin: 0; }
-  body { background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif;
+  body { background: var(--bg); color: var(--text); font: 16px/1.5 var(--font);
          display: grid; place-items: center; text-align: center; padding: 16px; box-sizing: border-box; }
-  h1 { font-size: 1.6rem; margin: 0 0 .5rem; }
+  main { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+         padding: 28px 32px; max-width: 640px; }
+  .row { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+  #buddy { width: 140px; height: 140px; flex: none; }
+  h1 { font-size: 1.6rem; font-weight: 800; margin: 0; text-align: left; max-width: 360px; }
   p { margin: .25rem 0; color: var(--muted); }
-  #topic { color: var(--fg); }
-  button { margin-top: 1.5rem; font: inherit; padding: .5rem 1.25rem; border-radius: 8px;
-           border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
+  #topic { color: var(--text); font-weight: 600; }
+  button { margin-top: 1.25rem; font: inherit; font-weight: 700; padding: .5rem 1.5rem; border-radius: var(--radius-sm);
+           border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); cursor: pointer; box-shadow: var(--shadow-sm); }
+  button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+  @media (max-width: 480px) { h1 { text-align: center; } }
 </style>
 </head>
 <body>
 <main>
-  <h1 id="msg">Blocked during this focus block</h1>
+  <div class="row">
+    <div id="buddy"></div>
+    <h1 id="msg">Blocked during this focus block</h1>
+  </div>
   <p id="site"></p>
   <p id="topic" hidden></p>
   <button id="back" type="button">Back</button>

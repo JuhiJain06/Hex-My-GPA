@@ -4,27 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Study Buddy</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="buddy.css">
 <style>
-  :root { color-scheme: light dark; --bg: #f6f5f1; --fg: #1f2328; --muted: #6a6f76; --bad: #b3412e; --line: #d8d5cc; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #16181b; --fg: #e8e6e1; --muted: #9aa0a6; --bad: #ef8a76; --line: #33363b; } }
-  body { background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 16px; }
-  h1 { font-size: 1.2rem; margin: 0 0 .75rem; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); margin: 0; padding: 16px; }
+  header { display: flex; align-items: center; gap: 10px; margin: 0 0 .75rem; }
+  h1 { font-size: 1.2rem; font-weight: 800; margin: 0; }
+  #buddy { width: 64px; height: 64px; flex: none; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
   .muted { color: var(--muted); }
-  .bad { color: var(--bad); }
-  .big { font: 600 2.6rem/1.1 ui-monospace, monospace; margin: .25rem 0 .75rem; }
-  .topic { font-size: 1.05rem; font-weight: 600; word-break: break-word; }
+  .bad { color: var(--danger); }
+  .big { font: 800 2.6rem/1.1 var(--font); font-variant-numeric: tabular-nums; margin: .25rem 0 .75rem; color: var(--accent-text); }
+  .topic { font-size: 1.05rem; font-weight: 700; word-break: break-word; }
   dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
-  dt { color: var(--muted); } dd { margin: 0; }
-  label { display: block; margin: .6rem 0 .2rem; }
-  input, select, button { font: inherit; box-sizing: border-box; width: 100%; padding: .4rem .55rem; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: inherit; }
-  button { margin-top: .9rem; cursor: pointer; }
+  dt { color: var(--muted); } dd { margin: 0; font-weight: 600; }
+  label { display: block; margin: .6rem 0 .2rem; color: var(--muted); font-size: .9rem; }
+  input, select, button { font: inherit; box-sizing: border-box; width: 100%; padding: .45rem .6rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--line); background: var(--card); color: var(--text); }
+  button { margin-top: .9rem; cursor: pointer; font-weight: 700; background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-sm); }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<h1>Study Buddy</h1>
+<header><div id="buddy" hidden></div><h1>Study Buddy</h1></header>
 <p id="offline" class="muted" hidden>Desktop buddy not running</p>
-<section id="live" hidden>
+<section id="live" class="card" hidden>
   <div id="topic" class="topic"></div>
   <div id="timeLeft" class="big">--:--</div>
   <dl>
@@ -32,7 +37,7 @@
     <dt>Streak</dt><dd id="streak">0 days</dd>
   </dl>
 </section>
-<form id="start" hidden>
+<form id="start" class="card" hidden>
   <label for="topicIn">Topic</label>
   <input id="topicIn" maxlength="200" required autocomplete="off">
   <label for="mode">Mode</label>

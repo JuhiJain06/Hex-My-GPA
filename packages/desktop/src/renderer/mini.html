@@ -7,31 +7,32 @@
   <link rel="stylesheet" href="common.css">
   <link rel="stylesheet" href="buddy.css">
   <style>
+    html, body { background: var(--card); }
     body { -webkit-app-region: drag; padding: 8px 10px; overflow: hidden; font-size: 12px;
-      border: 1px solid var(--line); border-radius: 8px; }
+      border: 1px solid var(--line); }
     button, .click { -webkit-app-region: no-drag; }
     .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-    #topic { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #topic { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #label { color: var(--muted); flex: none; }
     .mid { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 4px; }
-    #time { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
+    #time { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .5px; }
     #time.paused { color: var(--warn); font-size: 18px; cursor: pointer; }
     #buddy { width: 48px; height: 48px; margin: -4px 0; }
     .stats { text-align: right; color: var(--muted); line-height: 1.3; }
-    .btns { display: flex; gap: 4px; }
-    .btns button { flex: 1; padding: 3px 4px; font-size: 11px; white-space: nowrap; }
+    /* Two rows of two, so every label ("Turn off blocking" in full) fits the narrow window. */
+    .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .btns button { min-width: 0; padding: 3px 6px; font-size: 11.5px; white-space: nowrap; border-radius: 8px; box-shadow: none; }
     button:disabled { opacity: .4; cursor: default; }
     #ext { color: var(--warn); font-size: 10.5px; margin-top: 4px; line-height: 1.2; }
-    #soundBtn { padding: 0 6px; font-size: 11px; line-height: 16px; margin-left: 6px; flex: none; }
+    #soundBtn { padding: 0 8px; font-size: 11px; line-height: 16px; margin-left: 6px; flex: none; border-radius: 999px; box-shadow: none; }
     #soundPanel { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); -webkit-app-region: no-drag; }
     #soundPanel .row { display: flex; gap: 6px; align-items: center; margin-bottom: 5px; }
-    #soundPanel select { flex: 1; min-width: 0; font-size: 11px; }
-    #soundPanel input[type=range] { width: 70px; flex: none; }
+    #soundPanel select { flex: 1; min-width: 0; font-size: 11px; padding: 3px 6px; }
+    #soundPanel input[type=range] { width: 70px; flex: none; accent-color: var(--accent-text); }
     #soundPanel .note { color: var(--muted); font-size: 10.5px; line-height: 1.25; }
-    .banner { position: fixed; inset: 0; background: var(--panel); display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 10px;
-      border-radius: 8px; border: 1px solid var(--accent); }
-    .banner .msg { font-size: 15px; font-weight: 600; }
+    .banner { position: fixed; inset: 0; background: var(--lavender); color: var(--on-lavender); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 10px; }
+    .banner .msg { font-size: 15px; font-weight: 800; }
     .banner .btns { width: 100%; }
   </style>
 </head>

@@ -4,20 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Study Buddy Options</title>
+<link rel="stylesheet" href="tokens.css">
 <style>
-  :root { color-scheme: light dark; --bg: #f6f5f1; --fg: #1f2328; --muted: #6a6f76; --ok: #2f6f5e; --bad: #b3412e; --line: #d8d5cc; }
-  @media (prefers-color-scheme: dark) { :root { --bg: #16181b; --fg: #e8e6e1; --muted: #9aa0a6; --ok: #7cc4ad; --bad: #ef8a76; --line: #33363b; } }
-  body { background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); margin: 0; padding: 24px 16px; }
   main { max-width: 560px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; margin: 0 0 1rem; }
-  h2 { font-size: 1.05rem; margin: 1.5rem 0 .5rem; }
-  section { border-top: 1px solid var(--line); padding-top: .5rem; }
+  h1 { font-size: 1.4rem; font-weight: 800; margin: 0 0 1rem; }
+  h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 .5rem; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+            padding: 14px 18px; margin-bottom: 14px; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
-  input { flex: 1 1 240px; min-width: 0; font: 14px ui-monospace, monospace; padding: .45rem .6rem; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: inherit; }
-  button { font: inherit; padding: .45rem 1rem; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; }
+  input { flex: 1 1 240px; min-width: 0; font: 14px var(--mono); padding: .45rem .6rem; border-radius: var(--radius-sm);
+          border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  input::placeholder { color: var(--muted); opacity: 1; }
+  button { font: inherit; font-weight: 700; padding: .45rem 1.1rem; border-radius: var(--radius-sm); border: 1px solid var(--accent);
+           background: var(--accent); color: var(--on-accent); cursor: pointer; box-shadow: var(--shadow-sm); }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+  code { font-family: var(--mono); }
   .muted { color: var(--muted); }
   .ok { color: var(--ok); }
-  .bad { color: var(--bad); }
+  .bad { color: var(--danger); }
   ol { padding-left: 1.25rem; }
 </style>
 </head>

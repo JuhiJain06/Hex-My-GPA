@@ -1,0 +1,70 @@
+/*
+ * Study Buddy theme tokens: the one shared palette for the desktop windows (imported by common.css)
+ * and the extension pages (linked by each page; injected into the YouTube card's shadow root with
+ * :root rewritten to :host). Soft pastel: cream, peach, mint, lavender. Local fonts only.
+ * core/test/theme.test.ts checks every text/background pair below is at least 4.5:1 in both schemes.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --bg: #fdf7ef;          /* cream page */
+  --card: #fffdf9;        /* raised cards, popovers, the mini window */
+  --panel: #f7ece1;       /* buttons and inputs */
+  --line: #ecdccb;        /* borders, dividers */
+  --overlay: rgba(253, 247, 239, 0.96); /* full-screen block overlay */
+
+  /* Text */
+  --text: #4a3d4e;        /* soft plum-gray */
+  --muted: #74667a;
+
+  /* Accents (fill) and the text that sits on them */
+  --accent: #f8b996;      /* peach: primary buttons */
+  --on-accent: #4a2618;
+  --mint: #bfe7d3;        /* toggles, chart bars */
+  --on-mint: #1f4a37;
+  --lavender: #ddd3f6;    /* chips, reminders, highlights */
+  --on-lavender: #3b2f63;
+
+  /* Colored text on --bg / --card */
+  --accent-text: #a4512a;
+  --ok: #2f6b50;
+  --warn: #8a5a00;
+  --danger: #b23b3b;
+
+  /* Shape */
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 6px 18px rgba(140, 100, 80, 0.12), 0 1px 3px rgba(140, 100, 80, 0.10);
+  --shadow-sm: 0 1px 3px rgba(140, 100, 80, 0.14);
+  --font: "Nunito", "Quicksand", "Varela Round", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --mono: "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #221f2a;
+    --card: #2c2836;
+    --panel: #363042;
+    --line: #4a4358;
+    --overlay: rgba(28, 25, 35, 0.96);
+
+    --text: #f3ecf2;
+    --muted: #bdb2c6;
+
+    --accent: #f2b496;
+    --on-accent: #3a1d12;
+    --mint: #9fd6bd;
+    --on-mint: #163a2a;
+    --lavender: #c4b6ef;
+    --on-lavender: #2a2050;
+
+    --accent-text: #f6bf9f;
+    --ok: #9fdcc0;
+    --warn: #f1c97f;
+    --danger: #f4a3a3;
+
+    --shadow: 0 6px 18px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+}

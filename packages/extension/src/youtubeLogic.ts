@@ -1,4 +1,5 @@
 // Pure-ish YouTube rules shared by the content script (youtube.ts) and the background worker.
+import { SHADOW_TOKENS_CSS } from '@study-buddy/core/theme/tokensCss';
 import type { DesktopToExt, ExtToDesktop } from '@study-buddy/core';
 import { shouldBlockOffline } from './rules';
 
@@ -147,17 +148,19 @@ export interface PromptCard {
   reminderText(): string;
 }
 
-const CARD_CSS = `
+// The shared theme tokens (with :root → :host) come first; the page's own styles can't reach in.
+const CARD_CSS = `${SHADOW_TOKENS_CSS}
 :host { all: initial; }
 .card { position: fixed; left: 16px; bottom: 16px; z-index: 2147483647; display: flex; align-items: center;
-  gap: 10px; padding: 10px 14px; border-radius: 10px; background: #1f2937; color: #f9fafb;
-  font: 14px/1.3 system-ui, sans-serif; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+  gap: 10px; padding: 10px 14px; border-radius: var(--radius); background: var(--card); color: var(--text);
+  border: 1px solid var(--line); font: 600 14px/1.3 var(--font); box-shadow: var(--shadow); }
 .card[hidden] { display: none; }
-button { font: inherit; cursor: pointer; border: 0; border-radius: 6px; padding: 4px 12px; }
-.yes { background: #22c55e; color: #052e16; }
-.no { background: #4b5563; color: #f9fafb; }
-.remind { background: #1e3a8a; }
-.x { background: transparent; color: #f9fafb; padding: 0 4px; font-size: 16px; line-height: 1; }`;
+button { font: inherit; font-weight: 700; cursor: pointer; border: 0; border-radius: var(--radius-sm); padding: 4px 14px; }
+button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.yes { background: var(--accent); color: var(--on-accent); }
+.no { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+.remind { background: var(--lavender); color: var(--on-lavender); border-color: var(--lavender); }
+.x { background: transparent; color: inherit; padding: 0 4px; font-size: 16px; line-height: 1; }`;
 
 /** A small fixed bottom-left card in a closed shadow root. Static text only; never touches the video. */
 export function mountPromptCard(doc: Document, onAnswer: (study: boolean) => void): PromptCard {

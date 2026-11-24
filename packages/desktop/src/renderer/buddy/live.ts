@@ -1,6 +1,6 @@
 import { moodFor, type Animal, type Mood } from '@study-buddy/core';
 import { buddy, IPC, onEngine, onState, type UiState } from '../api';
-import { buddySlot } from './draw';
+import { buddySlot } from '@study-buddy/core/buddy/draw';
 
 /**
  * Shows the study buddy in `host`, following the app: UiState (animal, phase, pause), `buddy:slip`

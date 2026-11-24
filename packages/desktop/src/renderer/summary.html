@@ -10,14 +10,16 @@
     body { padding: 22px 24px; overflow-y: auto; }
     .hero { display: flex; align-items: center; gap: 14px; margin: -6px 0 8px; }
     #buddy { width: 110px; height: 110px; flex: none; }
-    #cheer { font-size: 15px; font-weight: 600; }
-    h1 { font-size: 18px; margin: 0 0 2px; font-weight: 600; }
+    #cheer { font-size: 15px; font-weight: 700; color: var(--on-lavender); background: var(--lavender);
+      padding: 8px 12px; border-radius: var(--radius); }
+    h1 { font-size: 18px; margin: 0 0 2px; }
     .sub { color: var(--muted); margin-bottom: 14px; }
-    .total { font-size: 34px; font-weight: 600; color: var(--accent); }
-    section { margin-top: 16px; }
-    h2 { font-size: 13px; margin: 0 0 6px; font-weight: 600; color: var(--muted); }
+    .total { font-size: 34px; font-weight: 800; color: var(--accent-text); }
+    section { margin-top: 12px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+    h2 { font-size: 13px; margin: 0 0 6px; color: var(--muted); }
     ul { list-style: none; margin: 0; padding: 0; }
-    li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+    li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+    li:last-child { border-bottom: none; }
     #bypasses h2 { color: var(--warn); }
     .actions { margin-top: 22px; text-align: right; }
   </style>

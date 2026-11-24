@@ -7,17 +7,18 @@
   <link rel="stylesheet" href="common.css">
   <style>
     body { padding: 22px 24px; overflow-y: auto; }
-    h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
-    h2 { font-size: 13px; margin: 20px 0 8px; font-weight: 600; color: var(--muted); }
-    #streak { color: var(--accent); margin-bottom: 8px; }
-    #bars { display: flex; align-items: flex-end; gap: 3px; height: 190px; border-bottom: 1px solid var(--line); }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    h2 { font-size: 13px; margin: 20px 0 8px; color: var(--muted); }
+    #streak { color: var(--accent-text); font-weight: 700; margin-bottom: 8px; }
+    #bars { display: flex; align-items: flex-end; gap: 3px; height: 200px; border-bottom: 2px solid var(--line);
+      background: var(--card); border-radius: var(--radius) var(--radius) 0 0; padding: 10px 10px 0; }
     .col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
-    .col .bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; }
-    .col .bar.today { background: var(--warn); }
+    .col .bar { width: 100%; background: var(--mint); border-radius: 6px 6px 0 0; }
+    .col .bar.today { background: var(--accent); }
     .col .val { font-size: 9px; color: var(--muted); height: 12px; line-height: 12px; white-space: nowrap; }
     .axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 4px; }
     ul { list-style: none; margin: 0; padding: 0; }
-    li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--line); }
+    li { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--line); }
   </style>
 </head>
 <body>

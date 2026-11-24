@@ -7,15 +7,17 @@
   <link rel="stylesheet" href="common.css">
   <style>
     body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--line); }
-    .kicker { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-    #q { font-size: 16px; font-weight: 600; }
-    #topic { color: var(--accent); }
-    .btns { display: flex; gap: 8px; flex-wrap: wrap; }
-    .btns button { padding: 7px 12px; }
+    html, body { background: var(--card); }
+    #q { font-size: 16px; font-weight: 700; }
+    #topic { color: var(--accent-text); }
+    .btns { display: flex; gap: 6px; }
+    .btns button { flex: 1 1 auto; min-width: 0; padding: 5px 8px; font-size: 13px; line-height: 1.25; }
     .row { display: flex; gap: 8px; align-items: center; }
     .row input { width: 100px; }
     #newTopic input { width: 100%; }
-    kbd { font: 11px/1 monospace; color: var(--muted); margin-left: 4px; }
+    /* The shortcut sits under its label so all buttons fit on one row. */
+    kbd { display: block; font: 10.5px/1.2 var(--mono); color: var(--muted); margin-top: 1px; }
+    .primary kbd { color: var(--on-accent); }
     body.book { gap: 12px; }
     body.book #q { font-size: 18px; }
   </style>

@@ -1,11 +1,14 @@
 import type { DesktopToExt } from '@study-buddy/core';
-import { formatHm, formatTimeLeft } from './panelLogic';
+import { buddySlot } from '@study-buddy/core/buddy/draw';
+import { formatHm, formatTimeLeft, panelMood } from './panelLogic';
 
 type StateMsg = Extract<DesktopToExt, { t: 'state' }>;
 interface PanelUpdate { connected: boolean; state: StateMsg | null }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 let cur: PanelUpdate = { connected: false, state: null };
+const buddyEl = $('buddy');
+const buddy = buddySlot(buddyEl, 64);
 
 function render(): void {
   const { connected, state } = cur;
@@ -17,14 +20,17 @@ function render(): void {
     $('topic').textContent = state.topic ?? '';
     $('today').textContent = formatHm(state.todayMs);
     $('streak').textContent = `${state.streakDays} day${state.streakDays === 1 ? '' : 's'}`;
-    tick();
   }
+  tick();
 }
 
 function tick(): void {
   const s = cur.state;
   const counting = s !== null && (s.phase === 'focus' || s.phase === 'break');
   $('timeLeft').textContent = counting ? formatTimeLeft(s.phaseEndsAt, Date.now()) : '--:--';
+  // The chosen animal in the mood of the moment (redrawn only when the animal or mood changes).
+  buddyEl.hidden = !cur.connected || s === null;
+  if (cur.connected && s !== null) buddy.set(s.animal, panelMood(s, Date.now()));
 }
 setInterval(tick, 1000);
 

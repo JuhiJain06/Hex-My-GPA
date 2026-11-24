@@ -1,7 +1,10 @@
-import { BrowserWindow, screen, type BrowserWindowConstructorOptions } from 'electron';
+import { BrowserWindow, nativeTheme, screen, type BrowserWindowConstructorOptions } from 'electron';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseTokens } from '@study-buddy/core/theme/tokens';
 import type { Channel, WindowName } from '../shared/ipc';
+import { clampHeight, MINI_H, MINI_W } from '../shared/layout';
 import { debug } from './config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -14,9 +17,17 @@ export interface WindowSpec {
   inactive?: boolean;
 }
 
-const MINI_W = 260;
-const MINI_H = 150;
 const MARGIN = 16;
+
+/** The theme's page background per scheme (from the tokens.css next to the renderers), so no white flash. */
+const pageBg = (() => {
+  try {
+    const t = parseTokens(readFileSync(join(here, 'renderer', 'tokens.css'), 'utf8'));
+    return { light: t.light['--bg'] ?? '#fdf7ef', dark: t.dark['--bg'] ?? '#221f2a' };
+  } catch {
+    return { light: '#fdf7ef', dark: '#221f2a' };
+  }
+})();
 
 const specs = new Map<string, WindowSpec>();
 const open = new Map<string, BrowserWindow>();
@@ -114,7 +125,7 @@ defineWindow('settings', {
 const base = ():BrowserWindowConstructorOptions => ({
   show: false,
   autoHideMenuBar: true,
-  backgroundColor: '#1d1f24',
+  backgroundColor: nativeTheme.shouldUseDarkColors ? pageBg.dark : pageBg.light,
   webPreferences: {
     preload: join(here, 'preload.cjs'),
     contextIsolation: true,
@@ -144,7 +155,7 @@ export function showWindow(name: WindowName, opts: ShowOptions = {}): BrowserWin
     reveal(win, spec, opts);
     return win;
   }
-  const o = spec.options();
+  const o = clampToScreen(spec.options());
   win = new BrowserWindow({ ...base(), ...o, webPreferences: { ...base().webPreferences, ...o.webPreferences } });
   open.set(name, win);
   const created = win;
@@ -157,6 +168,15 @@ export function showWindow(name: WindowName, opts: ShowOptions = {}): BrowserWin
   created.once('ready-to-show', () => reveal(created, spec, opts));
   void created.loadFile(file, { query: opts.query });
   return created;
+}
+
+/** Every window fits the primary work area (minus 40 px); tall pages scroll inside instead. */
+function clampToScreen(o: BrowserWindowConstructorOptions): BrowserWindowConstructorOptions {
+  const workH = screen.getPrimaryDisplay().workArea.height;
+  const out = { ...o };
+  if (out.height !== undefined) out.height = clampHeight(out.height, workH);
+  if (out.minHeight !== undefined) out.minHeight = clampHeight(out.minHeight, workH);
+  return out;
 }
 
 function reveal(win: BrowserWindow, spec: WindowSpec, opts: ShowOptions): void {

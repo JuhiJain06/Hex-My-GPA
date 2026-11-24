@@ -1,4 +1,4 @@
-import type { ExtToDesktop } from '@study-buddy/core';
+import { isAnimal, moodFor, type Animal, type ExtToDesktop, type Mood, type Phase } from '@study-buddy/core';
 
 export const MAX_TOPIC = 200;
 
@@ -28,4 +28,18 @@ export function formatTimeLeft(phaseEndsAt: number | null, now: number): string 
 export function formatHm(ms: number): string {
   const m = Math.floor(Math.max(0, ms) / 60_000);
   return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+/** The chosen animal from a stored/pushed state (lastState); the cat when missing or unknown. */
+export function animalOf(state: unknown): Animal {
+  const a = typeof state === 'object' && state !== null ? (state as { animal?: unknown }).animal : undefined;
+  return isAnimal(a) ? a : 'cat';
+}
+
+/**
+ * The side panel buddy's mood from the state message. The panel can't see pauses, slips or the
+ * planned-length moment, so those count as absent.
+ */
+export function panelMood(s: { phase: Phase; phaseEndsAt: number | null }, now: number): Mood {
+  return moodFor({ phase: s.phase, paused: false, recentSlipAt: null, celebrating: false, phaseEndsAt: s.phaseEndsAt }, now);
 }

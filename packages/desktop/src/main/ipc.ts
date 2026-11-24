@@ -1,4 +1,4 @@
-import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { ipcMain, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import type { Db } from './db';
 import type { SessionController } from './controller';
 import { closeBySender, getWindow, showWindow } from './windows';
@@ -8,11 +8,10 @@ import { summarize } from '@study-buddy/core';
 import { buildHistory } from './history';
 import { parseReflection } from './reflection';
 import { parseSettings, parseSound } from './settingsValidate';
+import { clampHeight, MINI_H, MINI_MAX_H, MINI_W } from '../shared/layout';
 import { IPC, type HistoryView, type OfferAnswerMsg, type SettingsSaveResult, type StartRequest, type SummaryView, type WindowName } from '../shared/ipc';
 
 const DAY_MS = 86_400_000;
-const MINI_MIN_H = 150;
-const MINI_MAX_H = 420;
 
 export interface IpcDeps {
   ctrl: SessionController;
@@ -151,7 +150,8 @@ export function registerIpc(deps: IpcDeps): void {
     const mini = getWindow('mini');
     if (mini && mini.webContents.id === e.sender.id) {
       const [w] = mini.getContentSize();
-      mini.setContentSize(w ?? 260, Math.round(Math.min(MINI_MAX_H, Math.max(MINI_MIN_H, p))));
+      const h = Math.min(MINI_MAX_H, Math.max(MINI_H, p));
+      mini.setContentSize(w ?? MINI_W, Math.round(clampHeight(h, screen.getPrimaryDisplay().workArea.height)));
     }
   });
   on(IPC.overlayDismiss, () => deps.dismissOverlay());

@@ -12,6 +12,22 @@ export interface GuardUi {
   showOffer(exe: string): void;
 }
 
+/**
+ * Wraps the guard's UI with a log line per call. With `noGuard` (BUDDY_NO_GUARD=1, for live checks on a
+ * real desktop) it only logs: no overlay, prompt or offer ever appears.
+ */
+export function loggingGuardUi(ui: GuardUi, log: (...a: unknown[]) => void, noGuard: boolean): GuardUi {
+  const tag = noGuard ? ' (NO_GUARD: not shown)' : '';
+  const run = (fn: () => void) => { if (!noGuard) fn(); };
+  return {
+    showOverlay: (r) => { log(`overlay shown${tag}`, JSON.stringify(r)); run(() => ui.showOverlay(r)); },
+    hideOverlay: () => { log(`overlay hidden${tag}`); run(() => ui.hideOverlay()); },
+    showPrompt: (exe) => { log(`prompt shown${tag}`, exe); run(() => ui.showPrompt(exe)); },
+    hidePrompt: () => { log(`prompt hidden${tag}`); run(() => ui.hidePrompt()); },
+    showOffer: (exe) => { log(`offer shown${tag}`, exe); run(() => ui.showOffer(exe)); },
+  };
+}
+
 export type OfferChoice = 'block' | 'fine' | 'later';
 
 export const BROWSER_LABEL = 'Browser without Study Buddy';

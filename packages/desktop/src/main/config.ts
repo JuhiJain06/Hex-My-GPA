@@ -6,10 +6,13 @@ import type { Rhythm } from '@study-buddy/core';
  * - BUDDY_DEBUG=1     log engine events and phase changes to stdout
  * - BUDDY_AUTOSTART=t start a laptop session with topic t on launch (unless one is resumed)
  * - BUDDY_DATA_DIR=d  use d as userData (keeps manual-check data out of the real profile)
+ * - BUDDY_NO_GUARD=1  the app guard logs what it would do but shows no overlay, prompt or offer
+ *                     (use for every live check on a real desktop)
  */
 export const fastMode = process.env.BUDDY_FAST === '1';
 export const debug = process.env.BUDDY_DEBUG === '1';
 export const autostartTopic = process.env.BUDDY_AUTOSTART?.trim() || null;
+export const noGuard = process.env.BUDDY_NO_GUARD === '1';
 export const dataDirOverride = process.env.BUDDY_DATA_DIR?.trim() || null;
 
 export const FAST_RHYTHM: Rhythm = { focusMin: 3, shortBreakMin: 1, longBreakMin: 2, longBreakEvery: 3 };

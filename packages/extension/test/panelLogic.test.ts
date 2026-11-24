@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { formatHm, formatTimeLeft, parsePanelStart } from '../src/panelLogic';
+import { animalOf, formatHm, formatTimeLeft, panelMood, parsePanelStart } from '../src/panelLogic';
 
 test('parsePanelStart validates and maps to startSession', () => {
   expect(parsePanelStart({ type: 'panel-start', topic: ' Calculus ', mode: 'book', goal: ' ch 3 ', plannedMin: 90 }))
@@ -32,4 +32,23 @@ test('formatHm', () => {
   expect(formatHm(0)).toBe('0h 0m');
   expect(formatHm(5_400_000)).toBe('1h 30m');
   expect(formatHm(-5)).toBe('0h 0m');
+});
+
+test('animalOf reads the animal from a stored state, defaulting to the cat', () => {
+  expect(animalOf({ animal: 'fox' })).toBe('fox');
+  expect(animalOf({ animal: 'dragon' })).toBe('cat');
+  expect(animalOf({})).toBe('cat');
+  expect(animalOf(undefined)).toBe('cat');
+  expect(animalOf(null)).toBe('cat');
+  expect(animalOf('fox')).toBe('cat');
+});
+
+test('panelMood follows the phase (pause unknown → not paused; no slips or celebrations)', () => {
+  const now = 1_000_000;
+  expect(panelMood({ phase: 'idle', phaseEndsAt: null }, now)).toBe('wave');
+  expect(panelMood({ phase: 'focus', phaseEndsAt: now + 60_000 }, now)).toBe('study');
+  expect(panelMood({ phase: 'break', phaseEndsAt: now + 5 * 60_000 }, now)).toBe('break');
+  expect(panelMood({ phase: 'break', phaseEndsAt: now + 30_000 }, now)).toBe('alert');
+  expect(panelMood({ phase: 'awaitingNext', phaseEndsAt: null }, now)).toBe('alert');
+  expect(panelMood({ phase: 'ended', phaseEndsAt: null }, now)).toBe('wave');
 });

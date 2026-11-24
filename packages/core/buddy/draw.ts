@@ -1,4 +1,4 @@
-import { ANIMALS, type Animal, type Mood } from '@study-buddy/core';
+import { ANIMALS, type Animal, type Mood } from '../src/index';
 
 /**
  * The study buddy: an original, round, chibi-style animal drawn from simple SVG shapes with DOM

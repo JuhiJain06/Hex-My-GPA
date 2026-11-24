@@ -2,7 +2,8 @@
 //   dist/main.js        main process (ESM, Node platform)
 //   dist/watchdog.js    watchdog process (ESM, run by electron.exe as node)
 //   dist/preload.cjs    preload (CJS, as sandboxed preloads require)
-//   dist/renderer/*     one IIFE bundle per renderer + its html + common.css + buddy.css
+//   dist/renderer/*     one IIFE bundle per renderer + its html + common.css, plus core's theme
+//                       tokens.css (imported by common.css) and buddy.css
 import { build } from 'esbuild';
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -13,6 +14,7 @@ const src = join(root, 'src');
 const out = join(root, 'dist');
 const rendererSrc = join(src, 'renderer');
 const rendererOut = join(out, 'renderer');
+const core = join(root, '..', 'core');
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(rendererOut, { recursive: true });
@@ -35,5 +37,6 @@ await Promise.all([
 ]);
 
 for (const f of [...htmlPages, 'common.css']) copyFileSync(join(rendererSrc, f), join(rendererOut, f));
-copyFileSync(join(rendererSrc, 'buddy', 'buddy.css'), join(rendererOut, 'buddy.css'));
+copyFileSync(join(core, 'theme', 'tokens.css'), join(rendererOut, 'tokens.css'));
+copyFileSync(join(core, 'buddy', 'buddy.css'), join(rendererOut, 'buddy.css'));
 console.log(`built main, watchdog, preload and ${htmlPages.length} renderers → dist/`);

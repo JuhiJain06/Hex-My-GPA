@@ -3,6 +3,8 @@
 //   dist/{blocked,options}.{js,html}    pages (IIFE)
 //   dist/youtube.js                     content script (IIFE)
 //   dist/manifest.json
+//   dist/{tokens,buddy}.css             core's theme tokens and buddy animations, linked by the pages
+// A CSS import in TS is the file's text (the YouTube card puts the tokens in its shadow root).
 import { build } from 'esbuild';
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -11,11 +13,12 @@ import { fileURLToPath } from 'node:url';
 const root = dirname(fileURLToPath(import.meta.url));
 const src = join(root, 'src');
 const out = join(root, 'dist');
+const core = join(root, '..', 'core');
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
-const common = { bundle: true, sourcemap: 'linked', target: 'es2022', platform: 'browser', logLevel: 'warning' };
+const common = { bundle: true, sourcemap: 'linked', target: 'es2022', platform: 'browser', logLevel: 'warning', loader: { '.css': 'text' } };
 const htmlPages = readdirSync(src).filter((f) => f.endsWith('.html'));
 
 await Promise.all([
@@ -25,4 +28,6 @@ await Promise.all([
 
 copyFileSync(join(root, 'manifest.json'), join(out, 'manifest.json'));
 for (const f of htmlPages) copyFileSync(join(src, f), join(out, f));
+copyFileSync(join(core, 'theme', 'tokens.css'), join(out, 'tokens.css'));
+copyFileSync(join(core, 'buddy', 'buddy.css'), join(out, 'buddy.css'));
 console.log(`built background, youtube and ${htmlPages.length} pages -> dist/`);

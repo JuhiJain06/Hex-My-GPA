@@ -1,17 +1,28 @@
-:root {
-  --bg: #1d1f24; --panel: #262930; --text: #e8e6e1; --muted: #9a9ca3;
-  --accent: #4cc08a; --warn: #e0b04a; --danger: #d9655b; --line: #34373f;
-  color-scheme: dark;
-}
+/* Shared by every window. Colors, shape and font come from core/theme/tokens.css (copied next to this file). */
+@import url("tokens.css");
+
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
-  font: 14px/1.4 "Segoe UI", system-ui, sans-serif; user-select: none; }
-button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
-  border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  font: 14px/1.45 var(--font); user-select: none; }
+/* A window clamped to a short screen scrolls instead of cutting its content off. */
+body { overflow-y: auto; }
+h1, h2 { font-weight: 700; }
+button { font: inherit; font-weight: 600; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 6px 14px; cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: background-color .15s, border-color .15s, transform .1s; }
 button:hover { border-color: var(--muted); }
-button.primary { background: var(--accent); border-color: var(--accent); color: #10261b; font-weight: 600; }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-input { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
-  border-radius: 6px; padding: 7px 9px; width: 100%; user-select: text; }
+button:active { transform: translateY(1px); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+button.primary:hover { border-color: var(--on-accent); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent-text); outline-offset: 2px; }
+input, select, textarea { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 7px 10px; }
+input { width: 100%; user-select: text; }
+textarea { user-select: text; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
 .muted { color: var(--muted); }
+.kicker { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
 .hidden { display: none !important; }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }

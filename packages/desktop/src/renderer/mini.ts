@@ -2,6 +2,7 @@ import { DEFAULT_SETTINGS, type SoundChoice } from '@study-buddy/core';
 import { $, buddy, hm, IPC, mmss, onEngine, onState, type UiState } from './api';
 import { liveBuddy } from './buddy/live';
 import { FREQ_PRESETS, SoundEngine, fadeAction, normalizeChoice, shouldBeAudible } from './audio';
+import { MINI_H } from '../shared/layout';
 
 const params = new URLSearchParams(location.search);
 const PHONE_MS = 10_000;
@@ -49,7 +50,6 @@ if (params.get('phone') === '1') {
 }
 
 // ---- Focus sounds (this window lives for the whole session, so it hosts the audio) ----
-const MINI_H = 150;
 let engine: SoundEngine | null = null;
 let choice: SoundChoice = normalizeChoice(DEFAULT_SETTINGS.sound);
 let audible = false;

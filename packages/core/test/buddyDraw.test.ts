@@ -1,10 +1,11 @@
+/// <reference types="node" />
 // @vitest-environment jsdom
 import { describe, test, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ANIMALS, MOODS, type Animal, type Mood } from '@study-buddy/core';
-import { buddySlot, drawBuddy } from '../src/renderer/buddy/draw';
+import { ANIMALS, MOODS, type Animal, type Mood } from '../src/index';
+import { buddySlot, drawBuddy } from '../buddy/draw';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const animals = ANIMALS.map((a) => a.id);
@@ -100,8 +101,8 @@ describe('drawBuddy', () => {
     for (const [a, m] of combos) drawBuddy(a, m, 48);
     expect(setter).not.toHaveBeenCalled();
     expect(adj).not.toHaveBeenCalled();
-    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../src/renderer/buddy/draw.ts'), 'utf8');
-    expect(src).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|DOMParser|createContextualFragment/);
+    const drawSrc = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../buddy/draw.ts'), 'utf8');
+    expect(drawSrc).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|DOMParser|createContextualFragment/);
   });
 });
 
