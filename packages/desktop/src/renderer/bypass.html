@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Turn off blocking</title>
+  <link rel="stylesheet" href="common.css">
+  <style>
+    body { padding: 20px 22px; }
+    h1 { font-size: 16px; margin: 0 0 8px; font-weight: 600; }
+    p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+    #sentence { color: var(--text); font-weight: 600; font-size: 14px; margin: 0 0 12px;
+      padding: 8px 10px; border: 1px dashed var(--line); border-radius: 6px; user-select: none; }
+    .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    #sentenceInput.shake { animation: shake .4s; border-color: var(--danger); }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    #off { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <main id="form">
+    <h1>Turn off blocking</h1>
+    <p>Blocking stays off until your next block. Type this sentence to confirm:</p>
+    <div id="sentence"></div>
+    <input id="sentenceInput" type="text" autocomplete="off" spellcheck="false" aria-label="Type the sentence">
+    <div class="btns"><button id="cancel">Cancel</button><button id="confirm" class="primary">Confirm</button></div>
+  </main>
+  <div id="off" class="hidden">Blocking is already off</div>
+  <script src="bypass.js"></script>
+</body>
+</html>

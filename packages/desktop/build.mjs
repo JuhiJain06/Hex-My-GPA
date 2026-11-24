@@ -1,5 +1,6 @@
 // Bundles the Electron app into dist/:
 //   dist/main.js        main process (ESM, Node platform)
+//   dist/watchdog.js    watchdog process (ESM, run by electron.exe as node)
 //   dist/preload.cjs    preload (CJS, as sandboxed preloads require)
 //   dist/renderer/*     one IIFE bundle per renderer + its html + common.css
 import { build } from 'esbuild';
@@ -26,10 +27,12 @@ const rendererEntries = htmlPages.map((f) => join(rendererSrc, f.replace(/\.html
 await Promise.all([
   build({ ...common, entryPoints: [join(src, 'main', 'index.ts')], outfile: join(out, 'main.js'),
     platform: 'node', format: 'esm', external }),
+  build({ ...common, entryPoints: [join(src, 'watchdog', 'run.ts')], outfile: join(out, 'watchdog.js'),
+    platform: 'node', format: 'esm' }),
   build({ ...common, entryPoints: [join(src, 'preload.ts')], outfile: join(out, 'preload.cjs'),
     platform: 'node', format: 'cjs', external: ['electron'] }),
   build({ ...common, entryPoints: rendererEntries, outdir: rendererOut, platform: 'browser', format: 'iife' }),
 ]);
 
 for (const f of [...htmlPages, 'common.css']) copyFileSync(join(rendererSrc, f), join(rendererOut, f));
-console.log(`built main, preload and ${htmlPages.length} renderers → dist/`);
+console.log(`built main, watchdog, preload and ${htmlPages.length} renderers → dist/`);

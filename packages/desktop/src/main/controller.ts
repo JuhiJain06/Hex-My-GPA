@@ -54,7 +54,12 @@ export class SessionController extends EventEmitter {
   get engine(): SessionEngine { return this.eng; }
   get sessionId(): number | null { return this.id; }
 
-  restore(_opts: { byWatchdog?: boolean } = {}): 'none' | 'resumed' | 'staleEnded' {
+  /**
+   * Picks up the session left in the db by a previous run. `byWatchdog`: the watchdog relaunched us
+   * after the app died mid-session, so a resumed session logs one `app-closed` bypass. A stale
+   * session (the PC was off) is closed at its heartbeat and never counts as a bypass.
+   */
+  restore(opts: { byWatchdog?: boolean } = {}): 'none' | 'resumed' | 'staleEnded' {
     const now = this.clock();
     const active = this.db.activeSession(now);
     if (!active) return 'none';
@@ -74,6 +79,7 @@ export class SessionController extends EventEmitter {
       this.setSuggestion(s.breakCount % this.rhythm().longBreakEvery === 0);
     }
     this.lastSaveAt = now;
+    if (opts.byWatchdog) this.logEvent({ kind: 'bypass', target: 'app-closed', detail: null });
     this.tick();
     return 'resumed';
   }
@@ -102,11 +108,13 @@ export class SessionController extends EventEmitter {
   pause(since: number): void { this.act((now) => this.eng.pause(since, now)); }
   resume(): void { this.act((now) => this.eng.resume(now)); }
 
+  /** The bypass sentence: on success blocking is off until the next block, logged as a `blocking-turned-off` bypass. */
   turnOffBlocking(sentence: string): boolean {
     let ok = false;
     this.act((now) => {
       const ev = this.eng.turnOffBlocking(sentence, now);
       ok = ev.length > 0;
+      if (ok) this.logEvent({ kind: 'bypass', target: 'blocking-turned-off', detail: null });
       return ev;
     });
     return ok;

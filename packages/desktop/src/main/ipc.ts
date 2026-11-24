@@ -31,6 +31,8 @@ export interface IpcDeps {
   onOfferAnswer(exe: string, choice: OfferAnswerMsg['choice']): void;
   /** Called after validated settings were saved (rebroadcast lists to the bridge). */
   onSettingsSaved(): void;
+  /** The bypass sentence was accepted (already logged by the controller): close its window, rebroadcast. */
+  onBlockingOff(): void;
   /** The overlay's button: hide the overlay. */
   dismissOverlay(): void;
   /** Focus-sound mute flag (not persisted); toggle also broadcasts it. */
@@ -97,7 +99,12 @@ export function registerIpc(deps: IpcDeps): void {
     onStarted();
     return { ok: true };
   });
-  handle(IPC.blockingOff, (p) => typeof p === 'string' && ctrl.turnOffBlocking(p));
+  handle(IPC.blockingOff, (p) => {
+    if (typeof p !== 'string' || p.length > 200 || ctrl.sessionId === null || !ctrl.engine.blockingActive) return false;
+    const ok = ctrl.turnOffBlocking(p);
+    if (ok) deps.onBlockingOff();
+    return ok;
+  });
 
   const finishedSession = (id: unknown) =>
     typeof id === 'number' && Number.isInteger(id) ? db.sessions(0).find((s) => s.id === id) : undefined;

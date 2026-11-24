@@ -84,6 +84,15 @@ const promptOptions = (): BrowserWindowConstructorOptions => ({
 defineWindow('prompt', { html: 'prompt', inactive: true, options: promptOptions });
 defineWindow('offer', { html: 'prompt', inactive: true, options: promptOptions });
 
+// The bypass sentence: small, focused, above other windows so it can't get lost behind the mini.
+defineWindow('bypass', {
+  html: 'bypass',
+  options: () => ({
+    width: 400, height: 280, resizable: false, alwaysOnTop: true,
+    minimizable: false, maximizable: false, fullscreenable: false, title: 'Turn off blocking',
+  }),
+});
+
 defineWindow('reflection', {
   html: 'reflection',
   options: () => ({ width: 420, height: 560, resizable: false, title: 'How did it go?' }),

@@ -18,6 +18,7 @@ import { scheduleMiniClose } from './endFlow';
 import { createTray } from './tray';
 import { bindMuteHotkey, unbindAllHotkeys } from './hotkeys';
 import { IPC } from '../shared/ipc';
+import { FLAG_FILE_NAME, RESTORED_FLAG, relaunchArgs, startWatchdog, stopWatchdog, writeFlag } from './watchdog';
 
 const PHONE_REMINDER = { phone: '1' };
 const IMAGE_NAME: Record<BrowserKind, string> = { chrome: 'chrome.exe', edge: 'msedge.exe' };
@@ -49,6 +50,22 @@ async function main(): Promise<void> {
   const db = await openDb(join(app.getPath('userData'), 'study-buddy.sqlite'));
   const ctrl = new SessionController(db, Date.now, { rhythm: rhythmOverride });
   if (fastMode) console.log('[buddy] fast mode: 3/1/2 min rhythm');
+
+  // Watchdog: while a session runs, the flag exists and a detached watchdog relaunches us if we die.
+  // Quitting from the tray mid-session leaves the flag on purpose (that's an app-closed bypass).
+  const flagFile = join(app.getPath('userData'), FLAG_FILE_NAME);
+  const restoredByWatchdog = process.argv.includes(RESTORED_FLAG);
+  const armWatchdog = () => {
+    if (ctrl.sessionId === null) return;
+    try {
+      writeFlag(flagFile);
+      startWatchdog({ appPid: process.pid, exePath: process.execPath, args: relaunchArgs(process.argv), flagFile, cwd: process.cwd() });
+      log('watchdog armed');
+    } catch (err) { console.error('[buddy] watchdog failed to start', err); }
+  };
+  const disarmWatchdog = () => {
+    try { stopWatchdog(flagFile); log('watchdog disarmed'); } catch (err) { console.error('[buddy] flag delete failed', err); }
+  };
 
   /** Mini window query: phone reminder on a fresh start, planned length for the prompt. */
   const miniQuery = (fresh: boolean): Record<string, string> => {
@@ -83,6 +100,7 @@ async function main(): Promise<void> {
     if (ctrl.sessionId === null) return;
     const id = ctrl.end();
     log('session ended', id);
+    disarmWatchdog();
     // The mini window hosts the audio: let the sessionEnded fade-out play before closing it.
     scheduleMiniClose(() => closeWindow('mini'), () => ctrl.sessionId !== null);
     closeWindow('break');
@@ -193,6 +211,7 @@ async function main(): Promise<void> {
     db,
     onStarted: () => {
       log('session started', ctrl.sessionId, ctrl.engine.state.session?.topic);
+      armWatchdog();
       showSessionWindows(true);
       tray.refresh();
     },
@@ -207,6 +226,11 @@ async function main(): Promise<void> {
     },
     dismissOverlay: () => { log('overlay dismissed'); guard.dismissOverlay(); },
     onSettingsSaved: () => { log('settings saved'); broadcastState(); },
+    onBlockingOff: () => {
+      log('blocking turned off by sentence');
+      closeWindow('bypass');
+      broadcastState();
+    },
   });
 
   app.on('second-instance', () => (ctrl.sessionId !== null ? showSessionWindows(false) : showWindow('start')));
@@ -260,6 +284,7 @@ async function main(): Promise<void> {
     if (!topic) return;
     ctrl.start({ topic, mode: m.mode, goal: m.goal, plannedMin: m.plannedMin });
     log('session started via extension', topic);
+    armWatchdog();
     showSessionWindows(true);
     tray.refresh();
   });
@@ -273,13 +298,16 @@ async function main(): Promise<void> {
   }
   app.on('will-quit', () => b.close());
 
-  const restored = ctrl.restore();
-  log('restore →', restored);
+  const restored = ctrl.restore({ byWatchdog: restoredByWatchdog });
+  log('restore →', restored, restoredByWatchdog ? '(by watchdog)' : '');
+  if (restored !== 'resumed') disarmWatchdog(); // stale or leftover flag: no session to guard
   if (restored === 'resumed') {
+    armWatchdog();
     showSessionWindows(false);
   } else if (autostartTopic) {
     ctrl.start({ topic: autostartTopic, mode: 'laptop', goal: null, plannedMin: null });
     log('autostart', autostartTopic);
+    armWatchdog();
     showSessionWindows(true);
   } else {
     showWindow('start');
