@@ -55,11 +55,12 @@ export class SessionController extends EventEmitter {
   get sessionId(): number | null { return this.id; }
 
   /**
-   * Picks up the session left in the db by a previous run. `byWatchdog`: the watchdog relaunched us
-   * after the app died mid-session, so a resumed session logs one `app-closed` bypass. A stale
-   * session (the PC was off) is closed at its heartbeat and never counts as a bypass.
+   * Picks up the session left in the db by a previous run. The app died mid-session if the watchdog
+   * relaunched us (`byWatchdog`) or the session flag was still there at startup (`flagLeftover`:
+   * both processes killed, or relaunched by hand first); a resumed session then logs exactly one
+   * `app-closed` bypass. A stale session (the PC was off) is closed at its heartbeat and never counts.
    */
-  restore(opts: { byWatchdog?: boolean } = {}): 'none' | 'resumed' | 'staleEnded' {
+  restore(opts: { byWatchdog?: boolean; flagLeftover?: boolean } = {}): 'none' | 'resumed' | 'staleEnded' {
     const now = this.clock();
     const active = this.db.activeSession(now);
     if (!active) return 'none';
@@ -79,7 +80,7 @@ export class SessionController extends EventEmitter {
       this.setSuggestion(s.breakCount % this.rhythm().longBreakEvery === 0);
     }
     this.lastSaveAt = now;
-    if (opts.byWatchdog) this.logEvent({ kind: 'bypass', target: 'app-closed', detail: null });
+    if (opts.byWatchdog || opts.flagLeftover) this.logEvent({ kind: 'bypass', target: 'app-closed', detail: null });
     this.tick();
     return 'resumed';
   }

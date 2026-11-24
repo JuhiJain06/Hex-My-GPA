@@ -1,4 +1,5 @@
-import { app, powerMonitor } from 'electron';
+import { app, BrowserWindow, powerMonitor } from 'electron';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { BRIDGE_PORT, DEFAULT_SETTINGS, isBrowserCovered, type BrowserKind, type EngineEvent, type Lists } from '@study-buddy/core';
@@ -18,7 +19,9 @@ import { scheduleMiniClose } from './endFlow';
 import { createTray } from './tray';
 import { bindMuteHotkey, unbindAllHotkeys } from './hotkeys';
 import { IPC } from '../shared/ipc';
-import { FLAG_FILE_NAME, RESTORED_FLAG, relaunchArgs, startWatchdog, stopWatchdog, writeFlag } from './watchdog';
+import {
+  FLAG_FILE_NAME, RESTORED_FLAG, bindOsSessionEnd, parseRestartHistory, relaunchArgs, startWatchdog, stopWatchdog, writeFlag,
+} from './watchdog';
 
 const PHONE_REMINDER = { phone: '1' };
 const IMAGE_NAME: Record<BrowserKind, string> = { chrome: 'chrome.exe', edge: 'msedge.exe' };
@@ -45,6 +48,9 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 async function main(): Promise<void> {
+  // Read before anything can rewrite it: a flag left by a previous run means the app died mid-session.
+  const flagFile = join(app.getPath('userData'), FLAG_FILE_NAME);
+  const flagLeftover = existsSync(flagFile);
   await app.whenReady();
   app.setAppUserModelId('study.buddy');
   const db = await openDb(join(app.getPath('userData'), 'study-buddy.sqlite'));
@@ -53,19 +59,32 @@ async function main(): Promise<void> {
 
   // Watchdog: while a session runs, the flag exists and a detached watchdog relaunches us if we die.
   // Quitting from the tray mid-session leaves the flag on purpose (that's an app-closed bypass).
-  const flagFile = join(app.getPath('userData'), FLAG_FILE_NAME);
   const restoredByWatchdog = process.argv.includes(RESTORED_FLAG);
+  const restartHistory = parseRestartHistory(process.argv);
+  let osEnding = false;
   const armWatchdog = () => {
-    if (ctrl.sessionId === null) return;
+    if (ctrl.sessionId === null || osEnding) return;
     try {
       writeFlag(flagFile);
-      startWatchdog({ appPid: process.pid, exePath: process.execPath, args: relaunchArgs(process.argv), flagFile, cwd: process.cwd() });
+      startWatchdog({
+        appPid: process.pid, exePath: process.execPath, args: relaunchArgs(process.argv), flagFile, cwd: process.cwd(),
+        ...restartHistory,
+      });
       log('watchdog armed');
     } catch (err) { console.error('[buddy] watchdog failed to start', err); }
   };
   const disarmWatchdog = () => {
     try { stopWatchdog(flagFile); log('watchdog disarmed'); } catch (err) { console.error('[buddy] flag delete failed', err); }
   };
+  // OS shutdown/logoff closes us seconds before the windowless watchdog: drop the flag first so it
+  // doesn't relaunch us and blame the user. The events go to top-level windows, so a hidden window
+  // that lives as long as the app receives them whatever else is open.
+  const sessionEndSentinel = new BrowserWindow({ show: false, width: 1, height: 1, skipTaskbar: true, focusable: false });
+  bindOsSessionEnd({ window: sessionEndSentinel, powerMonitor }, () => {
+    osEnding = true;
+    log('OS session ending');
+    disarmWatchdog();
+  });
 
   /** Mini window query: phone reminder on a fresh start, planned length for the prompt. */
   const miniQuery = (fresh: boolean): Record<string, string> => {
@@ -298,8 +317,8 @@ async function main(): Promise<void> {
   }
   app.on('will-quit', () => b.close());
 
-  const restored = ctrl.restore({ byWatchdog: restoredByWatchdog });
-  log('restore →', restored, restoredByWatchdog ? '(by watchdog)' : '');
+  const restored = ctrl.restore({ byWatchdog: restoredByWatchdog, flagLeftover });
+  log('restore →', restored, restoredByWatchdog ? '(by watchdog)' : '', flagLeftover ? '(flag left over)' : '');
   if (restored !== 'resumed') disarmWatchdog(); // stale or leftover flag: no session to guard
   if (restored === 'resumed') {
     armWatchdog();

@@ -1,12 +1,19 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
 import { openDb, type Db } from '../src/main/db';
 import { SessionController } from '../src/main/controller';
 import {
   RESTORED_FLAG,
+  MAX_RELAUNCHES,
+  RELAUNCH_WINDOW_MS,
+  bindOsSessionEnd,
   isAlive,
+  parseRestartHistory,
+  relaunchDecision,
+  restartHistoryArgs,
   parseWatchdogArgs,
   relaunchArgs,
   relaunchEnv,
@@ -65,6 +72,33 @@ describe('restore and bypass logging', () => {
     expect(got).toEqual([{ at: T0 + 25 * S, kind: 'bypass', target: 'app-closed', detail: null }]);
   });
 
+  test('restore with a leftover flag (killed by hand, relaunched by hand) logs one app-closed bypass', () => {
+    const c = new SessionController(db, clock);
+    c.start(info);
+    now += 5 * S;
+    const c2 = new SessionController(db, clock);
+    expect(c2.restore({ flagLeftover: true })).toBe('resumed');
+    expect(activeBypasses(c2)).toEqual([{ at: T0 + 5 * S, kind: 'bypass', target: 'app-closed', detail: null }]);
+  });
+
+  test('watchdog relaunch and a leftover flag together still log exactly one app-closed', () => {
+    const c = new SessionController(db, clock);
+    c.start(info);
+    now += 5 * S;
+    const c2 = new SessionController(db, clock);
+    expect(c2.restore({ byWatchdog: true, flagLeftover: true })).toBe('resumed');
+    expect(activeBypasses(c2).filter((e) => e.target === 'app-closed')).toHaveLength(1);
+  });
+
+  test('stale restore with a leftover flag logs nothing', () => {
+    const c = new SessionController(db, clock);
+    c.start(info);
+    now += 11 * M;
+    const c2 = new SessionController(db, clock);
+    expect(c2.restore({ byWatchdog: true, flagLeftover: true })).toBe('staleEnded');
+    expect(bypasses()).toEqual([]);
+  });
+
   test('restore without byWatchdog logs no bypass', () => {
     const c = new SessionController(db, clock);
     c.start(info);
@@ -101,13 +135,18 @@ describe('spawn args', () => {
     expect(relaunchArgs(['C:/e/electron.exe', 'dist/main.js'])).toEqual(['dist/main.js', RESTORED_FLAG]);
     expect(relaunchArgs(['C:/e/electron.exe', 'dist/main.js', RESTORED_FLAG, '--x'])).toEqual(['dist/main.js', '--x', RESTORED_FLAG]);
     expect(relaunchArgs(['C:/app/Study Buddy.exe'])).toEqual([RESTORED_FLAG]);
+    // Old restart history is dropped (the watchdog appends the current one on relaunch).
+    expect(relaunchArgs(['e', 'dist/main.js', RESTORED_FLAG, '--watchdog-restarts=2', '--watchdog-first=5'])).toEqual(['dist/main.js', RESTORED_FLAG]);
   });
 
   test('watchdogArgs round-trips through parseWatchdogArgs, including spaces', () => {
-    const opts = { appPid: 4242, exePath: 'C:/Program Files/e/electron.exe', args: ['dist/main.js', '--tag=a b'], flagFile: 'C:/data dir/session-active.flag', cwd: 'E:/Projects/Study buddy' };
+    const opts = { appPid: 4242, exePath: 'C:/Program Files/e/electron.exe', args: ['dist/main.js', '--tag=a b'], flagFile: 'C:/data dir/session-active.flag', cwd: 'E:/Projects/Study buddy', restarts: 2, firstAt: T0 };
     const argv = watchdogArgs('E:/x/dist/watchdog.js', opts);
     expect(argv[0]).toBe('E:/x/dist/watchdog.js');
     expect(parseWatchdogArgs(argv.slice(1))).toEqual(opts);
+    // No history given → none.
+    const bare = parseWatchdogArgs(watchdogArgs('w.js', { appPid: 1, exePath: 'e', args: [], flagFile: 'f', cwd: 'c' }).slice(1));
+    expect(bare).toMatchObject({ restarts: 0, firstAt: null });
   });
 
   test('parseWatchdogArgs rejects missing or bad values', () => {
@@ -119,6 +158,61 @@ describe('spawn args', () => {
   test('relaunchEnv drops ELECTRON_RUN_AS_NODE and keeps BUDDY_* and the rest', () => {
     const env = relaunchEnv({ ELECTRON_RUN_AS_NODE: '1', BUDDY_FAST: '1', BUDDY_DATA_DIR: 'C:/t', PATH: 'p' });
     expect(env).toEqual({ BUDDY_FAST: '1', BUDDY_DATA_DIR: 'C:/t', PATH: 'p' });
+  });
+});
+
+describe('relaunch cap', () => {
+  test(`allows ${MAX_RELAUNCHES} relaunches within the window, then gives up`, () => {
+    expect(MAX_RELAUNCHES).toBe(3);
+    expect(RELAUNCH_WINDOW_MS).toBe(2 * M);
+    let h = { restarts: 0, firstAt: null as number | null };
+    const seen: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const d = relaunchDecision(h, T0 + i * 4 * S);
+      expect(d.ok).toBe(true);
+      if (d.ok) { h = d.next; seen.push(h.restarts); }
+    }
+    expect(seen).toEqual([1, 2, 3]);
+    expect(h.firstAt).toBe(T0);
+    expect(relaunchDecision(h, T0 + 12 * S)).toEqual({ ok: false });
+    expect(relaunchDecision(h, T0 + 2 * M - 1)).toEqual({ ok: false });
+  });
+
+  test('history older than the window starts a fresh count', () => {
+    const d = relaunchDecision({ restarts: 3, firstAt: T0 }, T0 + 2 * M + 1);
+    expect(d).toEqual({ ok: true, next: { restarts: 1, firstAt: T0 + 2 * M + 1 } });
+  });
+
+  test('restart history round-trips through the app argv; bad values mean none', () => {
+    const argv = ['e', 'dist/main.js', RESTORED_FLAG, ...restartHistoryArgs({ restarts: 2, firstAt: T0 })];
+    expect(parseRestartHistory(argv)).toEqual({ restarts: 2, firstAt: T0 });
+    expect(parseRestartHistory(['e', 'dist/main.js'])).toEqual({ restarts: 0, firstAt: null });
+    expect(parseRestartHistory(['e', '--watchdog-restarts=x', '--watchdog-first=-1'])).toEqual({ restarts: 0, firstAt: null });
+  });
+});
+
+describe('OS shutdown / logoff', () => {
+  test('query-session-end, session-end and powerMonitor shutdown each delete the flag (once each is fine)', () => {
+    for (const [src, ev] of [['win', 'query-session-end'], ['win', 'session-end'], ['pm', 'shutdown']] as const) {
+      const win = new EventEmitter();
+      const pm = new EventEmitter();
+      const flag = join(dir, `flag-${ev}`);
+      writeFlag(flag);
+      const onEnd = vi.fn(() => stopWatchdog(flag));
+      bindOsSessionEnd({ window: win, powerMonitor: pm }, onEnd);
+      (src === 'win' ? win : pm).emit(ev);
+      expect(onEnd).toHaveBeenCalledTimes(1);
+      expect(existsSync(flag)).toBe(false);
+    }
+  });
+
+  test('other window events do not touch the flag', () => {
+    const win = new EventEmitter();
+    const onEnd = vi.fn();
+    bindOsSessionEnd({ window: win, powerMonitor: new EventEmitter() }, onEnd);
+    win.emit('close');
+    win.emit('blur');
+    expect(onEnd).not.toHaveBeenCalled();
   });
 });
 
@@ -139,7 +233,7 @@ describe('flag and watchdog process', () => {
       spawn: (cmd, args, o) => { calls.push({ cmd, args, env: o.env, detached: o.detached, stdio: o.stdio, windowsHide: o.windowsHide }); return 777; },
       isAlive: (pid) => pid === 777 && alive,
     };
-    const opts = { appPid: 1, exePath: 'e.exe', args: ['m.js', RESTORED_FLAG], flagFile: 'f', cwd: 'c' };
+    const opts = { appPid: 1, exePath: 'e.exe', args: ['m.js', RESTORED_FLAG], flagFile: 'f', cwd: 'c', restarts: 0, firstAt: null };
     const base = { execPath: 'node.exe', script: 'w.js', env: { BUDDY_FAST: '1' } };
     startWatchdog(opts, { ...base, spawner });
     startWatchdog(opts, { ...base, spawner });
