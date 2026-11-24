@@ -107,6 +107,7 @@ export interface EngineDebug {
 
 type FreqNode = OscillatorNode | ChannelMergerNode | GainNode;
 
+/** Only the mini window creates a SoundEngine: it is the sole audio host and lives for the whole session. */
 export class SoundEngine {
   private readonly fadeGain: GainNode;
   private readonly muteGain: GainNode;
@@ -135,8 +136,9 @@ export class SoundEngine {
   play(c: SoundChoice): void {
     const choice = normalizeChoice(c);
     void this.ctx.resume();
-    this.ambientGain.gain.setTargetAtTime(choice.ambientVolume, this.ctx.currentTime, 0.05);
-    this.freqGain.gain.setTargetAtTime(choice.freqVolume * 0.5, this.ctx.currentTime, 0.05);
+    const clamp = (v: number) => Math.min(1, Math.max(0, v || 0)); // a NaN from the DOM must not throw
+    this.ambientGain.gain.setTargetAtTime(clamp(choice.ambientVolume), this.ctx.currentTime, 0.05);
+    this.freqGain.gain.setTargetAtTime(clamp(choice.freqVolume) * 0.5, this.ctx.currentTime, 0.05);
     if (choice.ambient !== this.ambientKind) this.setAmbient(choice.ambient);
     const key = JSON.stringify(choice.freq);
     if (key !== this.freqKey) { this.freqKey = key; this.setFreq(choice.freq); }

@@ -14,6 +14,7 @@ import { startForegroundPolling, type ForegroundWindow } from './foreground';
 import { broadcast, closeWindow, showWindow } from './windows';
 import { breakWindowAction } from './breakFlow';
 import { registerIpc } from './ipc';
+import { scheduleMiniClose } from './endFlow';
 import { createTray } from './tray';
 import { bindMuteHotkey, unbindAllHotkeys } from './hotkeys';
 import { IPC } from '../shared/ipc';
@@ -82,7 +83,8 @@ async function main(): Promise<void> {
     if (ctrl.sessionId === null) return;
     const id = ctrl.end();
     log('session ended', id);
-    closeWindow('mini');
+    // The mini window hosts the audio: let the sessionEnded fade-out play before closing it.
+    scheduleMiniClose(() => closeWindow('mini'), () => ctrl.sessionId !== null);
     closeWindow('break');
     tray.refresh();
     showReflection(id);
