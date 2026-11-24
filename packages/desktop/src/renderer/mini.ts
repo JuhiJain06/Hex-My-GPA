@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, type SoundChoice } from '@study-buddy/core';
 import { $, buddy, hm, IPC, mmss, onEngine, onState, type UiState } from './api';
+import { liveBuddy } from './buddy/live';
 import { FREQ_PRESETS, SoundEngine, fadeAction, normalizeChoice, shouldBeAudible } from './audio';
 
 const params = new URLSearchParams(location.search);
@@ -33,6 +34,7 @@ function render(): void {
 }
 
 onState((s) => { state = s; render(); syncAudible(); });
+liveBuddy($('buddy'), 48);
 setInterval(render, 250);
 
 time.addEventListener('click', () => { if (state?.pausedSince != null) buddy.send(IPC.sessionResume); });

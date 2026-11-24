@@ -1,4 +1,4 @@
-import type { FreqChoice, Lists, Rhythm, Settings, SoundChoice } from '@study-buddy/core';
+import { isAnimal, type FreqChoice, type Lists, type Rhythm, type Settings, type SoundChoice } from '@study-buddy/core';
 
 /** Spec anti-goal: these are never interrupted, whatever the user types. */
 export const ALWAYS_FINE_SITES: readonly string[] = ['claude.ai', 'notebooklm.google.com', 'gemini.google.com'];
@@ -105,10 +105,15 @@ export function parseSettings(input: unknown, current: Settings): Settings | Fai
     if ('error' in s) return s;
     sound = s;
   }
+  let animal = current.animal;
+  if (input.animal !== undefined) {
+    if (!isAnimal(input.animal)) return { error: 'Study buddy: please pick one of the animals.' };
+    animal = input.animal;
+  }
   const always = new Set(ALWAYS_FINE_SITES);
   const protectedSite = (d: string) => ALWAYS_FINE_SITES.some((p) => d === p || d.endsWith('.' + p));
   sites.fine = [...ALWAYS_FINE_SITES, ...sites.fine.filter((d) => !always.has(d))];
   sites.gray = sites.gray.filter((d) => !protectedSite(d));
   sites.hard = sites.hard.filter((d) => !protectedSite(d));
-  return { rhythm, streakMinMinutes: input.streakMinMinutes, sites, apps, sound };
+  return { rhythm, streakMinMinutes: input.streakMinMinutes, sites, apps, sound, animal };
 }

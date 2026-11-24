@@ -5,8 +5,12 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
   <title>Session summary</title>
   <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="buddy.css">
   <style>
     body { padding: 22px 24px; overflow-y: auto; }
+    .hero { display: flex; align-items: center; gap: 14px; margin: -6px 0 8px; }
+    #buddy { width: 110px; height: 110px; flex: none; }
+    #cheer { font-size: 15px; font-weight: 600; }
     h1 { font-size: 18px; margin: 0 0 2px; font-weight: 600; }
     .sub { color: var(--muted); margin-bottom: 14px; }
     .total { font-size: 34px; font-weight: 600; color: var(--accent); }
@@ -19,6 +23,7 @@
   </style>
 </head>
 <body>
+  <div class="hero"><div id="buddy"></div><div id="cheer" class="hidden"></div></div>
   <h1 id="topic">Session summary</h1>
   <div class="sub" id="goal"></div>
   <div class="total" id="total"></div>

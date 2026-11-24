@@ -284,3 +284,33 @@ describe('SessionController', () => {
     expect(c.studyVideos()).toEqual([]);
   });
 });
+
+describe('SessionController: study buddy', () => {
+  test('uiState carries the chosen animal (cat by default, cat for a broken stored value)', () => {
+    const c = new SessionController(db, clock);
+    expect(c.uiState().animal).toBe('cat');
+    db.saveSettings({ ...db.getSettings(), animal: 'fox' });
+    expect(c.uiState().animal).toBe('fox');
+    db.saveSettings({ ...db.getSettings(), animal: 'dragon' as never });
+    expect(c.uiState().animal).toBe('cat');
+  });
+  test('refreshUi re-emits the ui state (settings saved)', () => {
+    const c = new SessionController(db, clock);
+    const uis: UiState[] = [];
+    c.on('ui', (u: UiState) => uis.push(u));
+    db.saveSettings({ ...db.getSettings(), animal: 'bunny' });
+    c.refreshUi();
+    expect(uis.at(-1)?.animal).toBe('bunny');
+  });
+  test('logging a slip emits "slip" with its timestamp; other events do not', () => {
+    const c = new SessionController(db, clock);
+    const slips: number[] = [];
+    c.on('slip', (at: number) => slips.push(at));
+    c.logEvent({ kind: 'slip', target: 'x', detail: null }); // no session: nothing logged
+    c.start(info);
+    now += 5 * S;
+    c.logEvent({ kind: 'slip', target: 'reddit.com', detail: 'hard-block-visit' });
+    c.logEvent({ kind: 'bypass', target: 'x', detail: null });
+    expect(slips).toEqual([T0 + 5 * S]);
+  });
+});

@@ -1,5 +1,6 @@
 import { $, buddy, chime, IPC, mmss, onEngine, onState, type UiState } from './api';
 import { breakChime } from './breakChime';
+import { liveBuddy } from './buddy/live';
 
 let state: UiState | null = null;
 let chimedForBreak = false;
@@ -28,6 +29,7 @@ onEngine((e) => {
   if (breakChime({ kind: 'event', event: e }, chimedForBreak)) chime();
 });
 setInterval(render, 250);
+liveBuddy($('buddy'), 160);
 
 $('start').addEventListener('click', () => buddy.send(IPC.blockNext));
 $('endSession').addEventListener('click', () => buddy.send(IPC.sessionEnd));

@@ -1,4 +1,4 @@
-import type { EngineEvent, Mode, Phase, Summary } from '@study-buddy/core';
+import type { Animal, EngineEvent, Mode, Phase, Summary } from '@study-buddy/core';
 
 /**
  * Every IPC channel the renderers may use. The preload refuses anything not listed here.
@@ -42,6 +42,8 @@ export const IPC = {
   state: 'state',
   /** M→R broadcast of each EngineEvent (chime, planned-length prompt, ...). */
   engine: 'engine',
+  /** M→R broadcast: a slip was just logged (blocked site/app, check-in "drifted"); payload is its timestamp (ms). */
+  buddySlip: 'buddy:slip',
 } as const;
 
 export type Channel = (typeof IPC)[keyof typeof IPC];
@@ -58,6 +60,8 @@ export interface UiState {
   blockingActive: boolean;
   extensionConnected: boolean;
   suggestion: string | null;
+  /** The study buddy chosen in Settings. */
+  animal: Animal;
 }
 
 /** Payload of `session:start`. */

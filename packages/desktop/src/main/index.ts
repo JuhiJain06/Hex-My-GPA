@@ -206,6 +206,8 @@ async function main(): Promise<void> {
     broadcast(IPC.engine, e);
     onEngineEvent(e);
   });
+  // Slips (blocked site/app, check-in "drifted") make the buddy briefly sad in the open windows.
+  ctrl.on('slip', (at: number) => { log('buddy slip', at); broadcast(IPC.buddySlip, at); });
 
   function onEngineEvent(e: EngineEvent): void {
     const action = breakWindowAction(e);
@@ -244,7 +246,7 @@ async function main(): Promise<void> {
       guard.answerOffer(exe, choice);
     },
     dismissOverlay: () => { log('overlay dismissed'); guard.dismissOverlay(); },
-    onSettingsSaved: () => { log('settings saved'); broadcastState(); },
+    onSettingsSaved: () => { log('settings saved'); ctrl.refreshUi(); },
     onBlockingOff: () => {
       log('blocking turned off by sentence');
       closeWindow('bypass');
@@ -276,6 +278,7 @@ async function main(): Promise<void> {
       studyVideos: ctrl.studyVideos(),
       todayMs: ui.todayMs,
       streakDays: ui.streakDays,
+      animal: ui.animal,
     });
   };
   ctrl.on('ui', broadcastState);

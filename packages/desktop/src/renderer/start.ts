@@ -1,5 +1,8 @@
 import { $, buddy, IPC } from './api';
 import type { Mode } from '@study-buddy/core';
+import { staticBuddy } from './buddy/live';
+
+staticBuddy($('buddy'), 160, () => 'wave');
 
 let mode: Mode = 'laptop';
 const topic = $<HTMLInputElement>('topic');

@@ -145,3 +145,16 @@ describe('parseSound', () => {
       expect(parseSound(bad)).toHaveProperty('error');
   });
 });
+
+describe('parseSettings: animal', () => {
+  test('missing animal keeps the current value', () => {
+    expect(ok(input(), { ...DEFAULT_SETTINGS, animal: 'panda' }).animal).toBe('panda');
+    expect(ok(input()).animal).toBe('cat');
+  });
+  test.each(['cat', 'fox', 'panda', 'bunny', 'penguin', 'hamster'])('accepts %s', (animal) => {
+    expect(ok(input({ animal })).animal).toBe(animal);
+  });
+  test.each([['dog'], ['Fox'], [''], [null], [3], [{}]])('rejects %j', (animal) => {
+    expect(err(input({ animal }))).toMatch(/buddy/i);
+  });
+});

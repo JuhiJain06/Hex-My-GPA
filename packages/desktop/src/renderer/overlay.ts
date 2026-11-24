@@ -1,4 +1,7 @@
 import { $, buddy, IPC } from './api';
+import { staticBuddy } from './buddy/live';
+
+staticBuddy($('buddy'), 160, () => 'sad');
 
 const params = new URLSearchParams(location.search);
 const until = Number(params.get('until'));

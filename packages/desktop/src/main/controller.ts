@@ -2,9 +2,11 @@ import { EventEmitter } from 'node:events';
 import {
   SessionEngine,
   dailyTotals,
+  isAnimal,
   localDay,
   pickSuggestion,
   streak,
+  type Animal,
   type BuddyEvent,
   type EngineEvent,
   type Phase,
@@ -33,7 +35,7 @@ function startOfDay(ms: number, daysBack = 0): number {
 /**
  * Owns the SessionEngine for the running session: persists snapshots (the heartbeat),
  * turns engine events into db events, and derives the UiState the windows render.
- * Emits 'engine' (EngineEvent) and 'ui' (UiState).
+ * Emits 'engine' (EngineEvent), 'ui' (UiState) and 'slip' (timestamp of each logged slip).
  */
 export class SessionController extends EventEmitter {
   private eng: SessionEngine;
@@ -143,7 +145,11 @@ export class SessionController extends EventEmitter {
     if (id === null) return;
     const at = this.clock();
     this.safe('addEvent', () => this.db.addEvent(id, { ...e, at }));
+    if (e.kind === 'slip') this.emit('slip', at);
   }
+
+  /** Re-emits the UiState (after settings changed, e.g. a new study buddy). */
+  refreshUi(): void { this.emitUi(); }
 
   /** Changes the session topic (check-in "switched topic"). Ignores blank input. */
   setTopic(topic: string): void {
@@ -175,7 +181,12 @@ export class SessionController extends EventEmitter {
     const totals = this.totals(now);
     const today = localDay(now);
     let streakMin = 120;
-    try { streakMin = this.db.getSettings().streakMinMinutes; } catch { /* keep default */ }
+    let animal: Animal = 'cat';
+    try {
+      const settings = this.db.getSettings();
+      streakMin = settings.streakMinMinutes;
+      if (isAnimal(settings.animal)) animal = settings.animal;
+    } catch { /* keep defaults */ }
     const phase: Phase = s.phase;
     return {
       phase,
@@ -187,6 +198,7 @@ export class SessionController extends EventEmitter {
       blockingActive: this.id !== null && this.eng.blockingActive,
       extensionConnected: this.extConnected,
       suggestion: phase === 'break' || phase === 'awaitingNext' ? this.suggestion : null,
+      animal,
     };
   }
 

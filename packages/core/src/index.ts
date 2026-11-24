@@ -6,3 +6,4 @@ export * from './suggestions';
 export * from './stats';
 export * from './protocol';
 export * from './coverage';
+export * from './animals';

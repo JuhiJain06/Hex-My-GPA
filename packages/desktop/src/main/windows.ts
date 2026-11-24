@@ -28,7 +28,7 @@ export function defineWindow(name: WindowName, spec: WindowSpec): void {
 
 defineWindow('start', {
   html: 'start',
-  options: () => ({ width: 420, height: 440, resizable: false, title: 'Study Buddy' }),
+  options: () => ({ width: 420, height: 630, resizable: false, title: 'Study Buddy' }),
 });
 
 defineWindow('mini', {
@@ -49,7 +49,7 @@ defineWindow('break', {
   html: 'break',
   inactive: true,
   options: () => ({
-    width: 420, height: 300, resizable: false, alwaysOnTop: true,
+    width: 420, height: 440, resizable: false, alwaysOnTop: true,
     minimizable: false, maximizable: false, title: 'Break',
   }),
 });
@@ -99,7 +99,7 @@ defineWindow('reflection', {
 });
 defineWindow('summary', {
   html: 'summary',
-  options: () => ({ width: 440, height: 600, resizable: false, title: 'Session summary' }),
+  options: () => ({ width: 440, height: 680, resizable: false, title: 'Session summary' }),
 });
 defineWindow('history', {
   html: 'history',

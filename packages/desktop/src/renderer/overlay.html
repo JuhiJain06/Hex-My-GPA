@@ -5,16 +5,19 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
   <title>Blocked</title>
   <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="buddy.css">
   <style>
     html, body { background: rgba(14, 15, 19, 0.93); }
     body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
+    .row { display: flex; align-items: center; gap: 20px; }
+    #buddy { width: 160px; height: 160px; }
     #msg { font-size: 34px; font-weight: 600; }
     #label { color: var(--muted); font-size: 16px; }
     #back { font-size: 16px; padding: 10px 22px; }
   </style>
 </head>
 <body>
-  <div id="msg">Blocked until break at --:--</div>
+  <div class="row"><div id="buddy"></div><div id="msg">Blocked until break at --:--</div></div>
   <div id="label"></div>
   <button id="back" class="primary">Back to studying</button>
   <script src="overlay.js"></script>

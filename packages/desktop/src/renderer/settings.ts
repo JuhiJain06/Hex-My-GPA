@@ -1,5 +1,6 @@
 import { $, buddy, IPC } from './api';
-import type { Lists, Settings } from '@study-buddy/core';
+import { ANIMALS, type Animal, type Lists, type Settings } from '@study-buddy/core';
+import { drawBuddy } from './buddy/draw';
 import type { SettingsSaveResult } from '../shared/ipc';
 
 const LIST_KEYS = ['fine', 'gray', 'hard'] as const;
@@ -7,7 +8,45 @@ const NUM_FIELDS = ['focusMin', 'shortBreakMin', 'longBreakMin', 'longBreakEvery
 const area = (group: 'sites' | 'apps', k: string) => $<HTMLTextAreaElement>(`${group}-${k}`);
 const num = (id: string) => $<HTMLInputElement>(id);
 
+let animal: Animal = 'cat';
+const tiles = new Map<Animal, HTMLButtonElement>();
+
+function selectAnimal(a: Animal): void {
+  animal = a;
+  for (const [id, tile] of tiles) {
+    tile.setAttribute('aria-checked', String(id === a));
+    tile.tabIndex = id === a ? 0 : -1;
+  }
+}
+
+for (const a of ANIMALS) {
+  const tile = document.createElement('button');
+  tile.type = 'button';
+  tile.className = 'tile';
+  tile.setAttribute('role', 'radio');
+  tile.dataset.animal = a.id;
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = a.label;
+  tile.append(drawBuddy(a.id, 'wave', 64), name);
+  tile.addEventListener('click', () => selectAnimal(a.id));
+  tiles.set(a.id, tile);
+  $('animals').appendChild(tile);
+}
+// Arrow keys move the choice, as in any radio group.
+$('animals').addEventListener('keydown', (ev) => {
+  const step = ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? 1 : ev.key === 'ArrowLeft' || ev.key === 'ArrowUp' ? -1 : 0;
+  if (!step) return;
+  ev.preventDefault();
+  const i = ANIMALS.findIndex((x) => x.id === animal);
+  const next = ANIMALS[(i + step + ANIMALS.length) % ANIMALS.length]!.id;
+  selectAnimal(next);
+  tiles.get(next)?.focus();
+});
+selectAnimal(animal);
+
 function fill(s: Settings): void {
+  if (ANIMALS.some((a) => a.id === s.animal)) selectAnimal(s.animal);
   for (const k of LIST_KEYS) {
     area('sites', k).value = s.sites[k].join('\n');
     area('apps', k).value = s.apps[k].join('\n');
@@ -31,6 +70,7 @@ function collect(): unknown {
     streakMinMinutes: readNum('streakMin'),
     sites: readLists('sites'),
     apps: readLists('apps'),
+    animal,
   };
 }
 

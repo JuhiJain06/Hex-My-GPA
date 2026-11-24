@@ -1,4 +1,4 @@
-import type { DesktopToExt, Lists, Phase } from '@study-buddy/core';
+import { isAnimal, type Animal, type DesktopToExt, type Lists, type Phase } from '@study-buddy/core';
 
 const PHASES: Phase[] = ['idle', 'focus', 'break', 'awaitingNext', 'ended'];
 const isStrArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
@@ -30,9 +30,12 @@ export function parseDesktopMessage(raw: string): DesktopToExt | null {
       const { todayMs, streakDays } = o;
       if (typeof todayMs !== 'number' || !Number.isFinite(todayMs) || todayMs < 0) return null;
       if (typeof streakDays !== 'number' || !Number.isFinite(streakDays) || streakDays < 0) return null;
+      // A missing animal (older desktop, or a lastState stored before Task 19) means the default cat.
+      if (o.animal !== undefined && !isAnimal(o.animal)) return null;
+      const animal: Animal = o.animal === undefined ? 'cat' : o.animal;
       return {
         t: 'state', phase: o.phase as Phase, blocking: o.blocking, topic: o.topic,
-        phaseEndsAt: end, sites, studyVideos: [...o.studyVideos], todayMs, streakDays,
+        phaseEndsAt: end, sites, studyVideos: [...o.studyVideos], todayMs, streakDays, animal,
       };
     }
     default:

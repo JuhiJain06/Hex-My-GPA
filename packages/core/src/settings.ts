@@ -1,3 +1,5 @@
+import type { Animal } from './animals';
+
 export type Mode = 'laptop' | 'book';
 
 export interface Rhythm {
@@ -30,6 +32,8 @@ export interface Settings {
   sites: Lists;
   apps: Lists;
   sound: SoundChoice;
+  /** The study buddy shown in the windows (and the extension). */
+  animal: Animal;
 }
 
 export const BROWSER_EXES: string[] = [
@@ -57,4 +61,5 @@ export const DEFAULT_SETTINGS: Settings = {
     hard: [],
   },
   sound: { ambient: 'none', ambientVolume: 0.5, freq: null, freqVolume: 0.3 },
+  animal: 'cat',
 };

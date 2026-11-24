@@ -1,5 +1,6 @@
 import type { Phase } from './engine';
 import type { Lists, Mode } from './settings';
+import type { Animal } from './animals';
 
 export const BRIDGE_PORT = 47615;
 export type BrowserKind = 'chrome' | 'edge';
@@ -7,7 +8,7 @@ export interface WindowReport { title: string; incognito: boolean; focused: bool
 
 export type DesktopToExt =
   | { t: 'helloAck'; ok: boolean }
-  | { t: 'state'; phase: Phase; blocking: boolean; topic: string | null; phaseEndsAt: number | null; sites: Lists; studyVideos: string[]; todayMs: number; streakDays: number };
+  | { t: 'state'; phase: Phase; blocking: boolean; topic: string | null; phaseEndsAt: number | null; sites: Lists; studyVideos: string[]; todayMs: number; streakDays: number; animal: Animal };
 
 export type ExtToDesktop =
   | { t: 'hello'; secret: string; browser: BrowserKind; incognitoAllowed: boolean }

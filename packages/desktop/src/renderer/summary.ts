@@ -1,6 +1,13 @@
 import { $, buddy, hm, IPC } from './api';
 import { bypassLabel } from '../shared/labels';
 import type { SummaryView } from '../shared/ipc';
+import type { Mood } from '@study-buddy/core';
+import { staticBuddy } from './buddy/live';
+
+/** Focus time that earns a celebration on the summary. */
+const CELEBRATE_MS = 25 * 60_000;
+let mood: Mood | null = null;
+const summaryBuddy = staticBuddy($('buddy'), 110, () => mood);
 
 function rows(listId: string, items: [string, string][], emptyText: string): void {
   const ul = $(listId);
@@ -24,6 +31,10 @@ function render(v: SummaryView): void {
   $('topic').textContent = v.topic;
   $('goal').textContent = v.goal ? `Goal: ${v.goal}` : '';
   $('total').textContent = hm(s.focusMs);
+  mood = s.focusMs >= CELEBRATE_MS ? 'celebrate' : 'wave';
+  summaryBuddy.refresh();
+  $('cheer').textContent = mood === 'celebrate' ? 'Well done!' : 'Every bit counts — see you next time!';
+  $('cheer').classList.remove('hidden');
   const vs = $('vs');
   if (s.vsAverageMs === null) vs.textContent = '';
   else {
