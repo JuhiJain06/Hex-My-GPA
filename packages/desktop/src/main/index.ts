@@ -15,7 +15,7 @@ import { broadcast, closeWindow, showWindow } from './windows';
 import { breakWindowAction } from './breakFlow';
 import { registerIpc } from './ipc';
 import { createTray } from './tray';
-import { unbindAllHotkeys } from './hotkeys';
+import { bindMuteHotkey, unbindAllHotkeys } from './hotkeys';
 import { IPC } from '../shared/ipc';
 
 const PHONE_REMINDER = { phone: '1' };
@@ -176,7 +176,17 @@ async function main(): Promise<void> {
     if (e.type === 'plannedLengthReached') showWindow('mini');
   }
 
+  let soundMuted = false;
+  const toggleMute = () => {
+    soundMuted = !soundMuted;
+    log('sound muted', soundMuted);
+    broadcast(IPC.soundMute, soundMuted);
+  };
+  bindMuteHotkey(toggleMute);
+
   registerIpc({
+    isMuted: () => soundMuted,
+    toggleMute,
     ctrl,
     db,
     onStarted: () => {

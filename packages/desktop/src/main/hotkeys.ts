@@ -33,3 +33,6 @@ export const ctrlAltY = new SharedHotkey(
   (fire) => bindHotkey('shared-y', 'Control+Alt+Y', fire),
   () => unbindHotkey('shared-y'),
 );
+
+/** Ctrl+Alt+M: mute / unmute focus sounds. Global and bound for the whole app run. */
+export const bindMuteHotkey = (toggle: () => void): boolean => bindHotkey('sound-mute', 'Control+Alt+M', toggle);

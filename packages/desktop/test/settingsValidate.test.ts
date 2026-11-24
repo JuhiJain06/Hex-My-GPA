@@ -134,3 +134,14 @@ describe('parseSettings: sound', () => {
     ['loud'],
   ])('rejects invalid sound %j', (sound) => expect(err(input({ sound }))).toMatch(/sound/i));
 });
+
+import { parseSound } from '../src/main/settingsValidate';
+describe('parseSound', () => {
+  const good = { ambient: 'rain', ambientVolume: 0.4, freq: { kind: 'binaural', beatHz: 40, carrierHz: 200 }, freqVolume: 0.2 };
+  test('accepts a valid choice', () => expect(parseSound(good)).toEqual(good));
+  test('accepts null freq', () => expect(parseSound({ ...good, freq: null })).toMatchObject({ freq: null }));
+  test('rejects bad ambient, volume, freq and junk', () => {
+    for (const bad of [{ ...good, ambient: 'x' }, { ...good, ambientVolume: 2 }, { ...good, freq: { kind: 'pure', hz: -1 } }, null, 'rain'])
+      expect(parseSound(bad)).toHaveProperty('error');
+  });
+});

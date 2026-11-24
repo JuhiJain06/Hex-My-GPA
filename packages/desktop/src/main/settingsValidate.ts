@@ -81,7 +81,7 @@ function parseFreq(raw: unknown): FreqChoice | null | Fail {
   return bad;
 }
 
-function parseSound(raw: unknown): SoundChoice | Fail {
+export function parseSound(raw: unknown): SoundChoice | Fail {
   if (!isObj(raw) || typeof raw.ambient !== 'string' || !AMBIENT.includes(raw.ambient)
     || !isUnit(raw.ambientVolume) || !isUnit(raw.freqVolume)) return { error: 'Sound settings are invalid.' };
   const freq = parseFreq(raw.freq);

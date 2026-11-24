@@ -30,7 +30,12 @@ export const IPC = {
   settingsSecret: 'settings:secret',
   historyGet: 'history:get',
   summaryGet: 'summary:get',
+  /** M→R broadcast of the muted flag (boolean); `invoke` returns the current flag. Ctrl+Alt+M toggles it in main. */
   soundMute: 'sound:mute',
+  /** R→M: persist the chosen SoundChoice to settings.sound (validated in main). Replies SettingsSaveResult. */
+  soundSave: 'sound:save',
+  /** R→M: the mini window asks for a taller/shorter height (px) while the sound popover is open. */
+  miniResize: 'mini:resize',
   windowOpen: 'window:open',
   windowClose: 'window:close',
   /** M→R broadcast of UiState; also `invoke('state')` returns the current UiState. */

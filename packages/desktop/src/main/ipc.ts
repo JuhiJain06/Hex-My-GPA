@@ -1,16 +1,18 @@
 import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import type { Db } from './db';
 import type { SessionController } from './controller';
-import { closeBySender, showWindow } from './windows';
+import { closeBySender, getWindow, showWindow } from './windows';
 import { parseCheckinAnswer } from './checkins';
 import { parseOfferAnswer, parsePromptAnswer } from './appGuard';
 import { summarize } from '@study-buddy/core';
 import { buildHistory } from './history';
 import { parseReflection } from './reflection';
-import { parseSettings } from './settingsValidate';
+import { parseSettings, parseSound } from './settingsValidate';
 import { IPC, type HistoryView, type OfferAnswerMsg, type SettingsSaveResult, type StartRequest, type SummaryView, type WindowName } from '../shared/ipc';
 
 const DAY_MS = 86_400_000;
+const MINI_MIN_H = 150;
+const MINI_MAX_H = 420;
 
 export interface IpcDeps {
   ctrl: SessionController;
@@ -31,6 +33,9 @@ export interface IpcDeps {
   onSettingsSaved(): void;
   /** The overlay's button: hide the overlay. */
   dismissOverlay(): void;
+  /** Focus-sound mute flag (not persisted); toggle also broadcasts it. */
+  isMuted(): boolean;
+  toggleMute(): void;
 }
 
 /** Windows a renderer may open by name. */
@@ -76,6 +81,14 @@ export function registerIpc(deps: IpcDeps): void {
     db.saveSettings(r);
     deps.onSettingsSaved();
     return { ok: true, settings: r };
+  });
+  handle(IPC.soundMute, () => deps.isMuted());
+  handle(IPC.soundSave, (p): SettingsSaveResult => {
+    const sound = parseSound(p);
+    if ('error' in sound) return { ok: false, error: sound.error };
+    const next = { ...db.getSettings(), sound };
+    db.saveSettings(next);
+    return { ok: true, settings: next };
   });
   handle(IPC.sessionStart, (p) => {
     const req = parseStart(p);
@@ -124,6 +137,15 @@ export function registerIpc(deps: IpcDeps): void {
   on(IPC.offerAnswer, (p) => {
     const r = parseOfferAnswer(p);
     if (r) deps.onOfferAnswer(r.exe, r.choice);
+  });
+  on(IPC.soundMute, () => deps.toggleMute());
+  on(IPC.miniResize, (p, e) => {
+    if (typeof p !== 'number' || !Number.isFinite(p)) return;
+    const mini = getWindow('mini');
+    if (mini && mini.webContents.id === e.sender.id) {
+      const [w] = mini.getContentSize();
+      mini.setContentSize(w ?? 260, Math.round(Math.min(MINI_MAX_H, Math.max(MINI_MIN_H, p))));
+    }
   });
   on(IPC.overlayDismiss, () => deps.dismissOverlay());
   on(IPC.windowOpen, (p) => {
