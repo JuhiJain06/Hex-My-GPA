@@ -6,3 +6,9 @@ const BYPASS_LABELS: Record<string, string> = {
 
 /** Human label for a bypass event's target; unknown targets show raw. */
 export const bypassLabel = (target: string | null): string => (target === null ? 'Unknown' : (BYPASS_LABELS[target] ?? target));
+
+/** The mini window's browser-link line; null when the extension is connected. */
+export function extensionStatusText(s: { bridgeListening: boolean; extensionConnected: boolean }): string | null {
+  if (!s.bridgeListening) return 'Browser link unavailable (port in use) — websites aren\'t being watched';
+  return s.extensionConnected ? null : 'Browser buddy not connected — websites aren\'t being watched';
+}

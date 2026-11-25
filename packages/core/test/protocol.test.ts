@@ -27,5 +27,5 @@ test('covered when a connected report has a window whose tab title prefixes the 
   expect(isBrowserCovered({ exe: 'CHROME.EXE', title: 'Other tab - Google Chrome' }, [chrome])).toBe(false);
   expect(isBrowserCovered({ exe: 'msedge.exe', title: 'Ch 4 notes - Microsoft Edge' }, [chrome])).toBe(false);
   expect(isBrowserCovered({ exe: 'firefox.exe', title: 'anything' }, [chrome])).toBe(false);
-  expect(isBrowserCovered({ exe: 'chrome.exe', title: 'x' }, [{ browser: 'chrome', windows: [{ title: '', incognito: false, focused: true }] }])).toBe(false);
+  expect(isBrowserCovered({ exe: 'chrome.exe', title: 'x - Google Chrome' }, [{ browser: 'chrome', windows: [{ title: '', incognito: false, focused: true }] }])).toBe(false);
 });

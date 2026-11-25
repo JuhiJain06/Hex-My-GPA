@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import initSqlJs, { type Database } from 'sql.js';
+import {
+  closeSync, copyFileSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, writeSync,
+} from 'node:fs';
+import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 import {
   DEFAULT_SETTINGS,
   type BuddyEvent,
@@ -22,6 +24,9 @@ export interface Db {
   saveSettings(s: Settings): void;
   /** True once settings have been saved at least once (false on a fresh data dir). */
   hasSavedSettings(): boolean;
+  /** True once any browser extension has said hello with the right code (ever, on this data dir). */
+  isPaired(): boolean;
+  markPaired(): void;
   getSecret(): string;
   createSession(info: SessionInfo): number;
   saveSnapshot(id: number, snap: EngineState, now: number): void;
@@ -91,16 +96,76 @@ function renameWithRetry(rename: (from: string, to: string) => void, from: strin
 export interface OpenDbOptions {
   /** Test seam: replaces fs.renameSync. */
   rename?: (from: string, to: string) => void;
+  /** Test seam: replaces fs.fsyncSync. */
+  fsync?: (fd: number) => void;
+  /** Where recovery is reported. Default console.error. */
+  log?: (...a: unknown[]) => void;
+  /** Clock for the `.corrupt-<ts>` name. Default Date.now. */
+  now?: () => number;
+}
+
+/** Opens a db file, or throws if it is empty or not a readable SQLite database. */
+function openFile(SQL: SqlJsStatic, path: string): Database {
+  const buf = readFileSync(path);
+  if (buf.length === 0) throw new Error('empty file');
+  const db = new SQL.Database(buf);
+  try {
+    db.exec('SELECT count(*) FROM sqlite_master'); // sql.js only notices garbage on the first query
+  } catch (err) {
+    db.close();
+    throw err;
+  }
+  return db;
+}
+
+/**
+ * The db file, or on failure (garbage, zero-length): the bad file is moved aside as
+ * `<file>.corrupt-<ts>`, then `<file>.bak` is tried, else a fresh db. Recovery is logged.
+ */
+function load(SQL: SqlJsStatic, filePath: string, log: (...a: unknown[]) => void, now: () => number): Database {
+  if (!existsSync(filePath)) return new SQL.Database();
+  try {
+    return openFile(SQL, filePath);
+  } catch (err) {
+    const aside = `${filePath}.corrupt-${now()}`;
+    log(`[db] ${filePath} is unreadable (${(err as Error).message}); moved to ${aside}`);
+    renameSync(filePath, aside);
+  }
+  const bak = filePath + '.bak';
+  if (existsSync(bak)) {
+    try {
+      const db = openFile(SQL, bak);
+      log(`[db] recovered from ${bak}`);
+      return db;
+    } catch (err) {
+      log(`[db] ${bak} is unreadable too (${(err as Error).message}); starting fresh`);
+    }
+  } else log('[db] no backup; starting fresh');
+  return new SQL.Database();
+}
+
+/** Writes `data` to `path` and flushes it to disk before returning. */
+function writeDurable(path: string, data: Uint8Array, fsync: (fd: number) => void): void {
+  const fd = openSync(path, 'w');
+  try {
+    let off = 0;
+    while (off < data.length) off += writeSync(fd, data, off, data.length - off);
+    fsync(fd);
+  } finally {
+    closeSync(fd);
+  }
 }
 
 export async function openDb(filePath: string, opts: OpenDbOptions = {}): Promise<Db> {
   const SQL = await initSqlJs();
-  const db: Database = existsSync(filePath) ? new SQL.Database(readFileSync(filePath)) : new SQL.Database();
+  const db = load(SQL, filePath, opts.log ?? console.error, opts.now ?? Date.now);
   db.run(SCHEMA);
 
+  /** temp file (fsynced) → previous file copied to `.bak` → atomic rename over the main file. */
   const persist = (): void => {
     const tmp = filePath + '.tmp';
-    writeFileSync(tmp, db.export());
+    writeDurable(tmp, db.export(), opts.fsync ?? fsyncSync);
+    if (existsSync(filePath)) copyFileSync(filePath, filePath + '.bak');
     renameWithRetry(opts.rename ?? renameSync, tmp, filePath);
   };
   const run = (sql: string, params: Param[] = []): void => { db.run(sql, params); };
@@ -136,6 +201,14 @@ export async function openDb(filePath: string, opts: OpenDbOptions = {}): Promis
     },
     hasSavedSettings() {
       return getSetting('settings') !== null;
+    },
+    isPaired() {
+      return getSetting('paired') === '1';
+    },
+    markPaired() {
+      if (getSetting('paired') === '1') return;
+      setSetting('paired', '1');
+      persist();
     },
     getSecret() {
       let s = getSetting('secret');

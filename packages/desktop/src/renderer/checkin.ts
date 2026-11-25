@@ -1,9 +1,14 @@
 import { $, buddy, chime, IPC } from './api';
 import type { CheckinAnswerMsg } from '../shared/ipc';
+import { createClickArming } from '../shared/arming';
 
 const params = new URLSearchParams(location.search);
 const book = params.get('mode') === 'book';
 const send = (m: CheckinAnswerMsg) => buddy.send(IPC.checkinAnswer, m);
+// Shown inactive, possibly right under the pointer: a click in its first 500 ms was meant for
+// whatever was there before, so the answer buttons ignore it.
+const arming = createClickArming(() => performance.now());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') arming.shown(); });
 
 $('topic').textContent = params.get('topic') ?? 'your topic';
 document.body.classList.toggle('book', book);
@@ -23,14 +28,14 @@ function openTopicInput(): void {
   setTimeout(() => $<HTMLInputElement>('newTopicInput').focus(), 50);
 }
 
-$('yes').addEventListener('click', () => {
+$('yes').addEventListener('click', arming.guard(() => {
   const raw = $<HTMLInputElement>('pages').value.trim();
   const pages = Number(raw);
   if (book && raw !== '' && Number.isInteger(pages) && pages >= 0 && pages <= 2000) send({ answer: 'pages', pages });
   else send({ answer: 'yes' });
-});
-$('drifted').addEventListener('click', () => send({ answer: 'drifted' }));
-$('switched').addEventListener('click', openTopicInput);
+}));
+$('drifted').addEventListener('click', arming.guard(() => send({ answer: 'drifted' })));
+$('switched').addEventListener('click', arming.guard(openTopicInput));
 buddy.on(IPC.checkinSwitch, openTopicInput);
 $('newTopic').addEventListener('submit', (e) => {
   e.preventDefault();

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { blockedMessage, browserKind, windowReports, isPairingCode } from '../src/util';
+import { blockedMessage, browserKind, windowReports, isPairingCode, REPORTED_WINDOW_TYPES } from '../src/util';
 
 test('blocked message shows the break time in local HH:MM (TZ Asia/Kolkata)', () => {
   // 2023-11-14T22:13:20Z = 03:43:20 IST next day
@@ -34,4 +34,8 @@ test('pairing code is trimmed lowercase hex', () => {
   expect(isPairingCode('')).toBe(false);
   expect(isPairingCode('xyz')).toBe(false);
   expect(isPairingCode('ab 12')).toBe(false);
+});
+
+test('window reports cover every window type the extension can see (popups, app windows, DevTools), not only normal ones', () => {
+  expect([...REPORTED_WINDOW_TYPES].sort()).toEqual(['app', 'devtools', 'normal', 'popup']);
 });

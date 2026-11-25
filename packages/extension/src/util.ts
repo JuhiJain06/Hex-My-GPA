@@ -17,7 +17,13 @@ export function browserKind(brands: { brand: string }[] | undefined): BrowserKin
 const MAX_TITLE = 300;
 const MAX_WINDOWS = 50; // keeps a report far below the bridge's 64 KiB maxPayload
 
-/** One report per normal window: its active tab's title. */
+/**
+ * Window types the background reports. Not only 'normal': the desktop treats an unreported tab-titled
+ * window as uncovered, and OAuth/sign-in popups carry the browser's title suffix too.
+ */
+export const REPORTED_WINDOW_TYPES: readonly `${chrome.windows.WindowType}`[] = ['normal', 'popup', 'app', 'devtools'];
+
+/** One report per window: its active tab's title. */
 export function windowReports(windows: chrome.windows.Window[]): WindowReport[] {
   return windows.slice(0, MAX_WINDOWS).map((w) => ({
     title: (w.tabs?.find((t) => t.active)?.title ?? '').slice(0, MAX_TITLE),

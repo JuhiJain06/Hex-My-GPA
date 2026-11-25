@@ -1,4 +1,6 @@
-import { BROWSER_EXES, classifyApp, type EngineEvent, type Lists } from '@study-buddy/core';
+import {
+  ALWAYS_FINE_APPS, BROWSER_EXES, SYSTEM_EXES, browserKindOf, classifyApp, type BrowserKind, type EngineEvent, type Lists,
+} from '@study-buddy/core';
 import type { SessionController } from './controller';
 import type { OfferAnswerMsg, PromptAnswerMsg } from '../shared/ipc';
 
@@ -10,6 +12,7 @@ export interface GuardUi {
   showPrompt(exe: string): void;
   hidePrompt(): void;
   showOffer(exe: string): void;
+  hideOffer(): void;
 }
 
 /**
@@ -25,6 +28,7 @@ export function loggingGuardUi(ui: GuardUi, log: (...a: unknown[]) => void, noGu
     showPrompt: (exe) => { log(`prompt shown${tag}`, exe); run(() => ui.showPrompt(exe)); },
     hidePrompt: () => { log(`prompt hidden${tag}`); run(() => ui.hidePrompt()); },
     showOffer: (exe) => { log(`offer shown${tag}`, exe); run(() => ui.showOffer(exe)); },
+    hideOffer: () => { log(`offer hidden${tag}`); run(() => ui.hideOffer()); },
   };
 }
 
@@ -33,6 +37,8 @@ export type OfferChoice = 'block' | 'fine' | 'later';
 export const BROWSER_LABEL = 'Browser without Study Buddy';
 /** An uncovered browser is tolerated this long (the extension may still be connecting). */
 const BROWSER_GRACE_MS = 3_000;
+/** A lost extension link is a bypass only once its browser has been uncovered in front this long. */
+const EXT_BYPASS_GRACE_MS = 10_000;
 const PROMPT_TIMEOUT_MS = 30_000;
 const REASK_MS = 5 * 60_000;
 const OFFER_AFTER_MS = 2 * 60_000;
@@ -45,7 +51,10 @@ const DISMISS_MS = 5_000;
  * - gray-listed apps get an "Is this for study?" prompt (no / 30 s timeout → slip, re-ask after 5 min;
  *   yes → silent for the rest of the block);
  * - unlisted apps used for 2 min (cumulative, per block) get a one-per-session "block it?" offer;
- * - browsers skip the lists and are overlaid when `coverage` says no extension covers them for > 3 s.
+ * - browsers skip the lists and are overlaid when `coverage` says no extension covers them for > 3 s;
+ *   if that browser's extension link dropped during this session (`extensionLostSince`), 10 s of it
+ *   uncovered in front logs one `extension-disconnected` bypass per drop (a closed browser logs nothing);
+ * - Windows shell processes are ignored and Claude is always fine; nothing is asked or counted while paused.
  * Study Buddy's own windows are ignored: they hide the overlay but keep the last real foreground.
  * Pure logic: windows go through `ui`, list changes through `updateApps`. Driven by `tick()` every second.
  */
@@ -70,6 +79,8 @@ export class AppGuard {
   /** Per session: exes offered, and offers still awaiting an answer. */
   private offered = new Set<string>();
   private pendingOffers = new Set<string>();
+  /** Lost-link episodes (`kind@lostSince`) already logged as a bypass. */
+  private bypassLogged = new Set<string>();
 
   constructor(
     private readonly ctrl: SessionController,
@@ -79,6 +90,8 @@ export class AppGuard {
     ownPid: number | ((pid: number) => boolean),
     private readonly clock: () => number,
     private readonly updateApps: (fn: (apps: Lists) => Lists) => void = () => {},
+    /** When the extension link of that browser kind dropped (null while connected / never connected). */
+    private readonly extensionLostSince: (kind: BrowserKind) => number | null = () => null,
   ) {
     this.isOwn = typeof ownPid === 'number' ? (pid) => pid === ownPid : ownPid;
     this.lastAccountAt = clock();
@@ -88,6 +101,8 @@ export class AppGuard {
         this.resetBlock();
         this.offered.clear();
         this.pendingOffers.clear();
+        this.bypassLogged.clear();
+        this.ui.hideOffer();
       }
       this.evaluate();
     });
@@ -144,10 +159,17 @@ export class AppGuard {
     return this.ctrl.sessionId !== null && this.ctrl.engine.blockingActive;
   }
 
-  /** How the guard treats `exe`: browsers skip the lists (coverage decides). */
-  classify(exe: string): 'browser' | 'fine' | 'gray' | 'hard' | 'unlisted' {
-    if (BROWSER_EXES.includes(exe)) return 'browser';
-    return classifyApp(exe, this.getApps());
+  private get paused(): boolean {
+    return this.ctrl.engine.state.pausedSince !== null;
+  }
+
+  /** How the guard treats `exe`: browsers skip the lists (coverage decides); shell processes are ignored. */
+  classify(exe: string): 'browser' | 'system' | 'fine' | 'gray' | 'hard' | 'unlisted' {
+    const name = exe.toLowerCase();
+    if (BROWSER_EXES.includes(name)) return 'browser';
+    if (SYSTEM_EXES.includes(name)) return 'system';
+    if (ALWAYS_FINE_APPS.includes(name)) return 'fine';
+    return classifyApp(name, this.getApps());
   }
 
   /** Credits time since the last call to the current unlisted app (blocking only). */
@@ -156,7 +178,7 @@ export class AppGuard {
     const elapsed = now - this.lastAccountAt;
     this.lastAccountAt = now;
     const fg = this.front();
-    if (!fg || elapsed <= 0 || !this.blocking || this.classify(fg.exe) !== 'unlisted') return;
+    if (!fg || elapsed <= 0 || !this.blocking || this.paused || this.classify(fg.exe) !== 'unlisted') return;
     this.unlistedMs.set(fg.exe, (this.unlistedMs.get(fg.exe) ?? 0) + elapsed);
   }
 
@@ -169,7 +191,9 @@ export class AppGuard {
     const now = this.clock();
     const blocking = this.blocking;
 
-    if (this.prompt && !blocking) this.closePrompt();
+    // No answer needed any more: blocking off, paused (user away), or the user left that app.
+    // Our own windows in front keep `cur`, so clicking the prompt doesn't close it.
+    if (this.prompt && (!blocking || this.paused || this.cur?.exe !== this.prompt.exe)) this.closePrompt();
     if (this.prompt && now - this.prompt.at >= PROMPT_TIMEOUT_MS) {
       const { exe } = this.prompt;
       this.closePrompt();
@@ -191,9 +215,10 @@ export class AppGuard {
         else {
           this.browserUncoveredSince ??= now;
           if (now - this.browserUncoveredSince > BROWSER_GRACE_MS) overlay = BROWSER_LABEL;
+          this.checkExtensionBypass(fg.exe, this.browserUncoveredSince, now);
         }
       } else if (kind === 'gray') {
-        if (!this.prompt && !this.silenced.has(fg.exe) && now >= (this.askAfter.get(fg.exe) ?? -Infinity)) {
+        if (!this.prompt && !this.paused && !this.silenced.has(fg.exe) && now >= (this.askAfter.get(fg.exe) ?? -Infinity)) {
           this.prompt = { exe: fg.exe, at: now };
           this.ui.showPrompt(fg.exe);
         }
@@ -230,6 +255,22 @@ export class AppGuard {
   private refused(exe: string): void {
     this.slip(exe);
     this.askAfter.set(exe, this.clock() + REASK_MS);
+  }
+
+  /**
+   * The extension of this browser kind dropped during this session and the browser has been in front
+   * uncovered for 10 s (counted from the later of the drop and the uncovered start): one bypass per drop.
+   * A browser that was simply closed (its process may linger in the background) never gets here.
+   */
+  private checkExtensionBypass(exe: string, uncoveredSince: number, now: number): void {
+    const kind = browserKindOf(exe);
+    const lostSince = kind ? this.extensionLostSince(kind) : null;
+    const startedAt = this.ctrl.engine.state.session?.startedAt;
+    if (!kind || lostSince === null || startedAt === undefined || lostSince < startedAt || this.paused) return;
+    const key = `${kind}@${lostSince}`;
+    if (this.bypassLogged.has(key) || now - Math.max(uncoveredSince, lostSince) < EXT_BYPASS_GRACE_MS) return;
+    this.bypassLogged.add(key);
+    this.ctrl.logEvent({ kind: 'bypass', target: 'extension-disconnected', detail: null });
   }
 
   private slip(exe: string): void {

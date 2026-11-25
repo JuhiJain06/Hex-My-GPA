@@ -59,6 +59,8 @@ export interface UiState {
   streakDays: number;
   blockingActive: boolean;
   extensionConnected: boolean;
+  /** False when the browser link (localhost bridge) could not start, e.g. its port is in use. */
+  bridgeListening: boolean;
   suggestion: string | null;
   /** The study buddy chosen in Settings. */
   animal: Animal;

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, fsyncSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_SETTINGS, type EngineState, type SessionInfo } from '@study-buddy/core';
@@ -131,5 +131,70 @@ describe('hasSavedSettings', () => {
     db.saveSettings(DEFAULT_SETTINGS);
     expect(db.hasSavedSettings()).toBe(true);
     expect((await openDb(file)).hasSavedSettings()).toBe(true);
+  });
+});
+
+describe('paired flag (I5)', () => {
+  test('false on a fresh db; markPaired persists across reopen', async () => {
+    const db = await openDb(file);
+    expect(db.isPaired()).toBe(false);
+    db.markPaired();
+    db.markPaired(); // idempotent
+    expect(db.isPaired()).toBe(true);
+    expect((await openDb(file)).isPaired()).toBe(true);
+  });
+});
+
+describe('durability and recovery (I7)', () => {
+  const noLog = { log: () => {} };
+
+  test('persist fsyncs the temp file before the rename and keeps the previous file as .bak', async () => {
+    const order: string[] = [];
+    const db = await openDb(file, {
+      ...noLog,
+      fsync: (fd) => { order.push('fsync'); fsyncSync(fd); },
+      rename: (from, to) => { order.push('rename'); renameSync(from, to); },
+    });
+    expect(order).toEqual(['fsync', 'rename']);
+    expect(existsSync(file + '.bak')).toBe(false); // nothing to back up on a fresh file
+    db.saveSettings({ ...DEFAULT_SETTINGS, streakMinMinutes: 11 });
+    db.saveSettings({ ...DEFAULT_SETTINGS, streakMinMinutes: 22 });
+    expect(order).toEqual(['fsync', 'rename', 'fsync', 'rename', 'fsync', 'rename']);
+    // .bak holds the state before the last write.
+    copyFileSync(file + '.bak', join(dir, 'bak.sqlite'));
+    expect((await openDb(join(dir, 'bak.sqlite'), noLog)).getSettings().streakMinMinutes).toBe(11);
+    expect((await openDb(file, noLog)).getSettings().streakMinMinutes).toBe(22);
+  });
+
+  test('a garbage file is moved aside as .corrupt-<ts> and the .bak is used', async () => {
+    const db = await openDb(file, noLog);
+    db.saveSettings({ ...DEFAULT_SETTINGS, streakMinMinutes: 33 });
+    db.saveSettings({ ...DEFAULT_SETTINGS, streakMinMinutes: 44 });
+    writeFileSync(file, 'this is not a database, just garbage bytes '.repeat(50));
+    const logs: unknown[][] = [];
+    const db2 = await openDb(file, { log: (...a) => logs.push(a), now: () => 1234 });
+    expect(db2.getSettings().streakMinMinutes).toBe(33); // from .bak
+    expect(readFileSync(file + '.corrupt-1234', 'utf8')).toContain('garbage');
+    expect(logs.length).toBeGreaterThan(0);
+    // The recovered db is written back as the main file.
+    expect((await openDb(file, noLog)).getSettings().streakMinMinutes).toBe(33);
+  });
+
+  test('a zero-length file with no .bak starts fresh (and is kept aside)', async () => {
+    writeFileSync(file, '');
+    const db = await openDb(file, { ...noLog, now: () => 99 });
+    expect(db.getSettings()).toEqual(DEFAULT_SETTINGS);
+    expect(db.hasSavedSettings()).toBe(false);
+    expect(existsSync(file + '.corrupt-99')).toBe(true);
+    db.saveSettings({ ...DEFAULT_SETTINGS, streakMinMinutes: 5 });
+    expect((await openDb(file, noLog)).getSettings().streakMinMinutes).toBe(5);
+  });
+
+  test('a corrupt main file and a corrupt .bak still start fresh', async () => {
+    writeFileSync(file, 'garbage'.repeat(100));
+    writeFileSync(file + '.bak', 'also garbage'.repeat(100));
+    const db = await openDb(file, { ...noLog, now: () => 7 });
+    expect(db.getSettings()).toEqual(DEFAULT_SETTINGS);
+    expect(existsSync(file + '.corrupt-7')).toBe(true);
   });
 });

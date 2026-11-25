@@ -3,6 +3,7 @@ import { $, buddy, hm, IPC, mmss, onEngine, onState, type UiState } from './api'
 import { liveBuddy } from './buddy/live';
 import { FREQ_PRESETS, SoundEngine, fadeAction, normalizeChoice, shouldBeAudible } from './audio';
 import { MINI_H } from '../shared/layout';
+import { extensionStatusText } from '../shared/labels';
 
 const params = new URLSearchParams(location.search);
 const PHONE_MS = 10_000;
@@ -18,7 +19,9 @@ function render(): void {
   $('topic').textContent = s.topic ?? '';
   $('today').textContent = hm(s.todayMs);
   $('streak').textContent = String(s.streakDays);
-  $('ext').classList.toggle('hidden', s.extensionConnected);
+  const ext = extensionStatusText(s);
+  $('ext').classList.toggle('hidden', ext === null);
+  if (ext !== null) $('ext').textContent = ext;
 
   const paused = s.phase === 'focus' && s.pausedSince !== null;
   time.classList.toggle('paused', paused);

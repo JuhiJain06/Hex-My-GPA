@@ -1,5 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
-import { clampHeight, MINI_H, MINI_MAX_H, SCREEN_MARGIN } from '../src/shared/layout';
+import { clampHeight, MINI_H, MINI_MAX_H, SCREEN_MARGIN, stackBounds, type StackSlot } from '../src/shared/layout';
+import { createClickArming } from '../src/shared/arming';
 import { loggingGuardUi, type GuardUi } from '../src/main/appGuard';
 
 describe('clampHeight', () => {
@@ -21,7 +22,7 @@ describe('clampHeight', () => {
 
 describe('loggingGuardUi', () => {
   const fake = (): GuardUi => ({
-    showOverlay: vi.fn(), hideOverlay: vi.fn(), showPrompt: vi.fn(), hidePrompt: vi.fn(), showOffer: vi.fn(),
+    showOverlay: vi.fn(), hideOverlay: vi.fn(), showPrompt: vi.fn(), hidePrompt: vi.fn(), showOffer: vi.fn(), hideOffer: vi.fn(),
   });
 
   test('logs and forwards every call normally', () => {
@@ -53,5 +54,63 @@ describe('loggingGuardUi', () => {
     for (const fn of Object.values(ui)) expect(fn).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledTimes(5);
     expect(log.mock.calls[0]!.join(' ')).toMatch(/NO_GUARD/);
+  });
+});
+
+describe('stackBounds (I1: prompts never share a slot)', () => {
+  const wa = { x: 0, y: 0, width: 1920, height: 1040 };
+  const slots: StackSlot[] = ['checkin-laptop', 'checkin-book', 'prompt', 'offer'];
+  const overlap = (a: ReturnType<typeof stackBounds>, b: ReturnType<typeof stackBounds>) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  test('the check-in (either mode), gray prompt and offer never overlap, and all fit the work area', () => {
+    for (const area of [wa, { x: 100, y: 50, width: 1280, height: 680 }]) {
+      const r = Object.fromEntries(slots.map((s) => [s, stackBounds(s, area)]));
+      for (const a of slots) {
+        expect(r[a].x + r[a].width).toBeLessThanOrEqual(area.x + area.width);
+        expect(r[a].y).toBeGreaterThanOrEqual(area.y);
+        expect(r[a].y + r[a].height).toBeLessThanOrEqual(area.y + area.height);
+      }
+      for (const c of ['checkin-laptop', 'checkin-book'] as const) {
+        expect(overlap(r[c], r.prompt)).toBe(false);
+        expect(overlap(r[c], r.offer)).toBe(false);
+      }
+      expect(overlap(r.prompt, r.offer)).toBe(false);
+    }
+  });
+
+  test('the check-in sits bottom-right; the prompt above it', () => {
+    const c = stackBounds('checkin-laptop', wa);
+    expect(c.x + c.width).toBe(1920 - 16);
+    expect(c.y + c.height).toBe(1040 - 16);
+    expect(stackBounds('prompt', wa).y).toBeLessThan(stackBounds('checkin-book', wa).y);
+  });
+});
+
+describe('createClickArming (I1: no click-through answers)', () => {
+  test('clicks within 500 ms of being shown are ignored; re-showing re-arms', () => {
+    let t = 1000;
+    const arm = createClickArming(() => t);
+    expect(arm.ready()).toBe(false);
+    t += 499;
+    expect(arm.ready()).toBe(false);
+    t += 1;
+    expect(arm.ready()).toBe(true);
+    arm.shown();
+    t += 200;
+    expect(arm.ready()).toBe(false);
+    t += 300;
+    expect(arm.ready()).toBe(true);
+  });
+
+  test('guard() wraps a handler so it only runs when armed', () => {
+    let t = 0;
+    const arm = createClickArming(() => t);
+    const hits: number[] = [];
+    const h = arm.guard(() => hits.push(t));
+    h();
+    t = 600;
+    h();
+    expect(hits).toEqual([600]);
   });
 });

@@ -314,3 +314,60 @@ describe('SessionController: study buddy', () => {
     expect(slips).toEqual([T0 + 5 * S]);
   });
 });
+
+describe('SessionController: slips only while blocking (I3)', () => {
+  const events = (c: SessionController) => {
+    const id = c.end();
+    return db.sessions(0).find((s) => s.id === id)!.events.map((e) => [e.at, e.kind, e.target]);
+  };
+  const RH = { focusMin: 25, shortBreakMin: 5, longBreakMin: 15, longBreakEvery: 3 };
+
+  test('site/app slips are dropped during breaks, awaitingNext, after the turn-off sentence, and while paused', () => {
+    const c = new SessionController(db, clock, { rhythm: RH });
+    const emitted: number[] = [];
+    c.on('slip', (at: number) => emitted.push(at));
+    c.start(info);
+    now += S;
+    c.logEvent({ kind: 'slip', target: 'reddit.com', detail: 'hard-block-visit' }); // focus: kept
+    c.pause(now);
+    now += S;
+    c.logEvent({ kind: 'slip', target: 'reddit.com', detail: 'hard-block-visit' }); // paused: dropped
+    c.resume();
+    runTo(c, T0 + 26 * M);
+    expect(c.engine.state.phase).toBe('break');
+    c.logEvent({ kind: 'slip', target: 'reddit.com', detail: 'hard-block-visit' }); // break: dropped
+    runTo(c, T0 + 32 * M);
+    expect(c.engine.state.phase).toBe('awaitingNext');
+    c.logEvent({ kind: 'slip', target: 'steam.exe', detail: null }); // awaitingNext: dropped
+    c.nextBlock();
+    expect(c.turnOffBlocking('I am choosing to stop studying')).toBe(true);
+    c.logEvent({ kind: 'slip', target: 'youtube.com', detail: 'youtube-timeout' }); // bypassed: dropped
+    c.logEvent({ kind: 'overrun', target: null, detail: null }); // other kinds are not gated
+    expect(emitted).toEqual([T0 + S]);
+    const ev = events(c).filter(([, k]) => k === 'slip');
+    expect(ev).toEqual([[T0 + S, 'slip', 'reddit.com']]);
+  });
+
+  test('a check-in "drifted" slip still counts in unpaused focus after the turn-off sentence (check-ins continue)', () => {
+    const c = new SessionController(db, clock, { rhythm: RH });
+    c.start(info);
+    c.turnOffBlocking('I am choosing to stop studying');
+    now += S;
+    c.logEvent({ kind: 'slip', target: 'check-in', detail: null });
+    c.pause(now);
+    c.logEvent({ kind: 'slip', target: 'check-in', detail: null }); // paused: dropped
+    expect(events(c).filter(([, k]) => k === 'slip')).toEqual([[T0 + S, 'slip', 'check-in']]);
+  });
+});
+
+describe('SessionController: browser link (I5)', () => {
+  test('bridgeListening defaults to true and is reflected in uiState when it fails', () => {
+    const c = new SessionController(db, clock);
+    const uis: UiState[] = [];
+    c.on('ui', (u: UiState) => uis.push(u));
+    expect(c.uiState().bridgeListening).toBe(true);
+    c.setBridgeListening(false);
+    expect(c.uiState().bridgeListening).toBe(false);
+    expect(uis.at(-1)?.bridgeListening).toBe(false);
+  });
+});

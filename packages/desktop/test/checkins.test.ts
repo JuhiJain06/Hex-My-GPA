@@ -142,6 +142,34 @@ describe('CheckinRunner', () => {
     ]);
   });
 
+  test('"drifted" on a check-in that paused the session still logs its slip (resume comes first)', () => {
+    setup();
+    runTo(T0 + 20 * M);
+    idle = 600;
+    runTo(T0 + 22 * M);
+    expect(ctrl.engine.state.pausedSince).not.toBeNull();
+    runner.answer('drifted');
+    expect(ctrl.engine.state.pausedSince).toBeNull();
+    const id = ctrl.end();
+    const slips = db.sessions(0).find((s) => s.id === id)!.events.filter((e) => e.kind === 'slip');
+    expect(slips.map((e) => e.target)).toEqual(['check-in']);
+  });
+
+  test('a check-in window closed by the user (Alt+F4) counts as dismissed: no answer logged, next one scheduled', () => {
+    setup();
+    const log = vi.spyOn(ctrl, 'logEvent');
+    runTo(T0 + 20 * M);
+    expect(shown).toHaveLength(1);
+    runner.dismissed();
+    expect(hides).toBe(0); // the window is already gone; nothing to hide
+    runner.answer('yes'); // a late hotkey for the closed window is ignored
+    expect(log).not.toHaveBeenCalled();
+    runTo(T0 + 39 * M);
+    expect(shown).toHaveLength(1);
+    runTo(T0 + 40 * M);
+    expect(shown).toHaveLength(2);
+  });
+
   test('switched updates the topic and logs "switched"', () => {
     setup();
     const log = vi.spyOn(ctrl, 'logEvent');

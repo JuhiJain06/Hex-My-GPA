@@ -6,7 +6,7 @@ import { createConnector } from './connector';
 import { parseDesktopMessage } from './messages';
 import { parsePanelStart } from './panelLogic';
 import { backoffMs, buildBlockRules, sameRules, shouldBlockOffline } from './rules';
-import { browserKind, windowReports } from './util';
+import { REPORTED_WINDOW_TYPES, browserKind, windowReports } from './util';
 import { parseYtMessage, ytStateFor } from './youtubeLogic';
 
 type StateMsg = Extract<DesktopToExt, { t: 'state' }>;
@@ -231,7 +231,7 @@ function scheduleWindows(): void {
 
 async function sendWindows(): Promise<void> {
   if (!helloed) return;
-  const wins = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] });
+  const wins = await chrome.windows.getAll({ populate: true, windowTypes: [...REPORTED_WINDOW_TYPES] });
   send({ t: 'windows', windows: windowReports(wins) });
 }
 

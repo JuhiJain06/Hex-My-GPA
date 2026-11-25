@@ -1,23 +1,18 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, afterEach } from 'vitest';
 import WebSocket from 'ws';
 import { Bridge } from '../src/main/bridge';
-import type { BrowserKind } from '@study-buddy/core';
 
 const SECRET = 's3cret-value';
 const STATE = { t: 'state' as const, phase: 'focus' as const, blocking: true, topic: 'Maths', phaseEndsAt: 123, sites: { hard: [], gray: [] } as never, studyVideos: [], todayMs: 0, streakDays: 0, animal: 'cat' as const };
 
 let bridge: Bridge;
 let clients: WebSocket[] = [];
-let blocking: boolean;
-let running: Record<BrowserKind, boolean>;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function make(extra: Partial<ConstructorParameters<typeof Bridge>[0]> = {}) {
   bridge = new Bridge({
     port: 0, secret: SECRET, clock: Date.now,
-    isBrowserRunning: async (b) => running[b],
-    isBlocking: () => blocking,
-    bypassDelayMs: 150, helloTimeoutMs: 200,
+    helloTimeoutMs: 200,
     ...extra,
   });
   return bridge.listen();
@@ -37,7 +32,6 @@ async function connect(origin?: string) {
 const hello = (ws: WebSocket, over: object = {}) =>
   ws.send(JSON.stringify({ t: 'hello', secret: SECRET, browser: 'chrome', incognitoAllowed: true, ...over }));
 
-beforeEach(() => { blocking = true; running = { chrome: true, edge: true }; });
 afterEach(() => { for (const c of clients) c.terminate(); clients = []; bridge.close(); });
 
 describe('Bridge', () => {
@@ -120,72 +114,43 @@ describe('Bridge', () => {
     expect(bridge.reports()).toEqual([{ browser: 'chrome', windows: [{ title: 'b', incognito: false, focused: true }] }]);
   });
 
-  test('disconnect during focus + browser still running after delay → one bypass event; reconnect in time → none', async () => {
-    await make();
+  test('lostSince: set when the last helloed connection of a browser kind closes, cleared by its next hello', async () => {
+    let t = 1000;
+    await make({ clock: () => t });
     const bypasses: unknown[] = [];
     bridge.on('bypass', (b) => bypasses.push(b));
+    expect(bridge.lostSince('chrome')).toBeNull();
     const a = await connect();
     hello(a.ws);
+    const e = await connect();
+    hello(e.ws, { browser: 'edge' });
     await sleep(40);
+    t = 2000;
     a.ws.close();
-    await sleep(300);
-    expect(bypasses).toEqual([{ target: 'extension-disconnected' }]);
-
-    bypasses.length = 0;
+    await sleep(40);
+    expect(bridge.lostSince('chrome')).toBe(2000);
+    expect(bridge.lostSince('edge')).toBeNull();
+    // Reconnecting clears it; a second chrome connection keeps the kind alive when one of them drops.
     const b = await connect();
     hello(b.ws);
-    await sleep(40);
-    b.ws.close();
-    await sleep(50);
     const c = await connect();
     hello(c.ws);
+    await sleep(40);
+    expect(bridge.lostSince('chrome')).toBeNull();
+    b.ws.close();
+    await sleep(40);
+    expect(bridge.lostSince('chrome')).toBeNull();
+    // The bridge itself never decides a bypass (the app guard does, lazily) and never asks the OS.
     await sleep(300);
     expect(bypasses).toEqual([]);
   });
 
-  test('disconnect, reconnect, disconnect: no bypass before delay after the last disconnect, then exactly one', async () => {
-    await make({ bypassDelayMs: 300 });
-    const bypasses: unknown[] = [];
-    bridge.on('bypass', (b) => bypasses.push(b));
-    const a = await connect();
-    hello(a.ws);
-    await sleep(40);
-    a.ws.close();
-    await sleep(100);
-    const b = await connect();
-    hello(b.ws);
-    await sleep(100);
-    b.ws.close(); // last disconnect; first timer would have fired ~160 ms from now
-    await sleep(200);
-    expect(bypasses).toEqual([]);
-    await sleep(350);
-    expect(bypasses).toEqual([{ target: 'extension-disconnected' }]);
-  });
-
-  test('no bypass when not blocking', async () => {
+  test('a connection that never said hello leaves no lost record', async () => {
     await make();
-    blocking = false;
-    const bypasses: unknown[] = [];
-    bridge.on('bypass', (b) => bypasses.push(b));
     const a = await connect();
-    hello(a.ws);
-    await sleep(40);
     a.ws.close();
-    await sleep(300);
-    expect(bypasses).toEqual([]);
-  });
-
-  test('disconnect when browser process gone → no bypass', async () => {
-    await make();
-    running.chrome = false;
-    const bypasses: unknown[] = [];
-    bridge.on('bypass', (b) => bypasses.push(b));
-    const a = await connect();
-    hello(a.ws);
     await sleep(40);
-    a.ws.close();
-    await sleep(300);
-    expect(bypasses).toEqual([]);
+    expect(bridge.lostSince('chrome')).toBeNull();
   });
 
   test('incognitoWarning true when any connected hello had incognitoAllowed false', async () => {

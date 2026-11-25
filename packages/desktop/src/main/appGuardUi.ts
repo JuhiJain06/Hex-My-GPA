@@ -3,10 +3,7 @@ import type { GuardUi } from './appGuard';
 import type { ForegroundWindow } from './foreground';
 import { ABOVE_OVERLAY, closeWindow, getWindow, raiseAboveOverlay, showWindow } from './windows';
 import { bindHotkey, ctrlAltY, unbindHotkey } from './hotkeys';
-
-const MARGIN = 16;
-const PROMPT = { w: 340, h: 130 };
-const OFFER = { w: 360, h: 150 };
+import { stackBounds } from '../shared/layout';
 
 export interface GuardUiDeps {
   /** The last real foreground window (for the overlay's display). */
@@ -27,19 +24,14 @@ function targetDisplay(fg: ForegroundWindow | null): Display {
   return screen.getPrimaryDisplay();
 }
 
-function bottomRight(w: number, h: number, above = 0) {
-  const wa = screen.getPrimaryDisplay().workArea;
-  return { x: wa.x + wa.width - w - MARGIN, y: wa.y + wa.height - h - MARGIN - above, width: w, height: h };
-}
-
 /**
  * Electron side of the app guard. The overlay covers the display of the foreground window, sits at
  * the 'screen-saver' level and never takes focus; its button only hides it. The gray-app prompt is
  * check-in style with Ctrl+Alt+Y/N bound only while it is visible (Y is shared with the
- * check-in: the newest visible one answers); the offer (stacked above the
- * prompt slot) has buttons only.
+ * check-in: the newest visible one answers). The check-in, prompt and offer each have their own
+ * bottom-right slot (stackBounds), so they never overlap; the offer has buttons only.
  */
-export function createGuardUi(deps: GuardUiDeps): GuardUi & { hideOffer(): void } {
+export function createGuardUi(deps: GuardUiDeps): GuardUi {
   return {
     showOverlay({ label, until }) {
       const query: Record<string, string> = { label, topic: deps.topic() ?? 'studying' };
@@ -58,7 +50,7 @@ export function createGuardUi(deps: GuardUiDeps): GuardUi & { hideOffer(): void 
     },
     showPrompt(exe) {
       const win = showWindow('prompt', { query: { kind: 'gray', exe } });
-      win?.setBounds(bottomRight(PROMPT.w, PROMPT.h));
+      win?.setBounds(stackBounds('prompt', screen.getPrimaryDisplay().workArea));
       raiseAboveOverlay(win);
       win?.once('show', () => raiseAboveOverlay(win));
       ctrlAltY.claim('prompt', () => deps.answerPrompt(exe, true));
@@ -71,7 +63,7 @@ export function createGuardUi(deps: GuardUiDeps): GuardUi & { hideOffer(): void 
     },
     showOffer(exe) {
       const win = showWindow('offer', { query: { kind: 'offer', exe } });
-      win?.setBounds(bottomRight(OFFER.w, OFFER.h, PROMPT.h + MARGIN));
+      win?.setBounds(stackBounds('offer', screen.getPrimaryDisplay().workArea));
       raiseAboveOverlay(win);
       win?.once('show', () => raiseAboveOverlay(win));
     },

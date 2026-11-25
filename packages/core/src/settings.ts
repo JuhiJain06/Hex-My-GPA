@@ -40,6 +40,18 @@ export const BROWSER_EXES: string[] = [
   'chrome.exe', 'msedge.exe', 'firefox.exe', 'brave.exe', 'opera.exe', 'vivaldi.exe',
 ];
 
+/** Apps that are never interrupted, whatever the lists say (spec anti-goal: Claude is a study tool). */
+export const ALWAYS_FINE_APPS: readonly string[] = ['claude.exe'];
+
+/**
+ * Windows shell and host processes (lock screen, Start, search, settings, IME, UWP frame host).
+ * They come to the front on their own, so they are never classified, offered or blocked.
+ */
+export const SYSTEM_EXES: readonly string[] = [
+  'lockapp.exe', 'searchhost.exe', 'searchapp.exe', 'startmenuexperiencehost.exe', 'shellexperiencehost.exe',
+  'applicationframehost.exe', 'systemsettings.exe', 'textinputhost.exe',
+];
+
 export const DEFAULT_SETTINGS: Settings = {
   rhythm: { focusMin: 45, shortBreakMin: 10, longBreakMin: 25, longBreakEvery: 3 },
   streakMinMinutes: 120,
@@ -55,6 +67,7 @@ export const DEFAULT_SETTINGS: Settings = {
     fine: [
       'acrord32.exe', 'acrobat.exe', 'sumatrapdf.exe', 'onenote.exe', 'winword.exe',
       'notepad.exe', 'code.exe', 'obsidian.exe', 'notion.exe', 'explorer.exe',
+      ...ALWAYS_FINE_APPS,
       ...BROWSER_EXES,
     ],
     gray: [],

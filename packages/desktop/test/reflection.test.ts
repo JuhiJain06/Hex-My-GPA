@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { parseReflection } from '../src/main/reflection';
-import { bypassLabel } from '../src/shared/labels';
+import { bypassLabel, extensionStatusText } from '../src/shared/labels';
 
 describe('parseReflection', () => {
   const ok = { sessionId: 3, goal: 'yes', tags: ['Phone', 'Tired'], note: 'hi' };
@@ -32,5 +32,13 @@ describe('bypassLabel', () => {
   test('unknown shows raw, null shows a fallback', () => {
     expect(bypassLabel('weird')).toBe('weird');
     expect(bypassLabel(null)).toBe('Unknown');
+  });
+});
+
+describe('extensionStatusText (I5: mini window browser-link line)', () => {
+  test('port in use beats "not connected"; connected shows nothing', () => {
+    expect(extensionStatusText({ bridgeListening: false, extensionConnected: false })).toBe('Browser link unavailable (port in use) — websites aren\'t being watched');
+    expect(extensionStatusText({ bridgeListening: true, extensionConnected: false })).toBe('Browser buddy not connected — websites aren\'t being watched');
+    expect(extensionStatusText({ bridgeListening: true, extensionConnected: true })).toBeNull();
   });
 });

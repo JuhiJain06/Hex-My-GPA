@@ -158,3 +158,15 @@ describe('parseSettings: animal', () => {
     expect(err(input({ animal }))).toMatch(/buddy/i);
   });
 });
+
+describe('parseSettings: protected apps (I6)', () => {
+  test('claude.exe is always on the fine list and stripped from gray and hard', () => {
+    const s = ok(apps(['claude.exe', 'steam.exe'], ['claude.exe', 'spotify.exe']));
+    expect(s.apps.fine).toEqual(['claude.exe']);
+    expect(s.apps.hard).toEqual(['steam.exe']);
+    expect(s.apps.gray).toEqual(['spotify.exe']);
+    const again = ok(apps([], [], ['claude.exe', 'code.exe']));
+    expect(again.apps.fine).toEqual(['claude.exe', 'code.exe']);
+    expect(DEFAULT_SETTINGS.apps.fine).toContain('claude.exe');
+  });
+});

@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_SETTINGS, type BuddyEvent, type Lists } from '@study-buddy/core';
+import { DEFAULT_SETTINGS, isBrowserCovered, type BrowserKind, type BuddyEvent, type Lists, type WindowReport } from '@study-buddy/core';
 import { openDb, type Db } from '../src/main/db';
 import { SessionController } from '../src/main/controller';
 import { AppGuard, BROWSER_LABEL, parseOfferAnswer, parsePromptAnswer, type GuardUi } from '../src/main/appGuard';
@@ -19,7 +19,8 @@ type Call =
   | { t: 'hideOverlay' }
   | { t: 'prompt'; exe: string }
   | { t: 'hidePrompt' }
-  | { t: 'offer'; exe: string };
+  | { t: 'offer'; exe: string }
+  | { t: 'hideOffer' };
 
 let dir: string;
 let db: Db;
@@ -29,6 +30,7 @@ let apps: Lists;
 let covered: boolean;
 let ctrl: SessionController;
 let guard: AppGuard;
+let lost: Partial<Record<BrowserKind, number>>;
 
 const ui: GuardUi = {
   showOverlay: (r) => { calls.push({ t: 'overlay', ...r }); },
@@ -36,6 +38,7 @@ const ui: GuardUi = {
   showPrompt: (exe) => { calls.push({ t: 'prompt', exe }); },
   hidePrompt: () => { calls.push({ t: 'hidePrompt' }); },
   showOffer: (exe) => { calls.push({ t: 'offer', exe }); },
+  hideOffer: () => { calls.push({ t: 'hideOffer' }); },
 };
 
 const fg = (exe: string, pid = 100, title = exe) => ({ exe, title, pid });
@@ -55,6 +58,7 @@ function start(): void {
   guard = new AppGuard(
     ctrl, ui, () => apps, () => covered, OWN, () => now,
     (fn) => { apps = fn(apps); },
+    (kind) => lost[kind] ?? null,
   );
   ctrl.start({ topic: 'Maths', mode: 'laptop', goal: null, plannedMin: null });
 }
@@ -67,8 +71,12 @@ function runTo(until: number, step = S): void {
 }
 /** Ends the session and returns its slip events. */
 function slips(): BuddyEvent[] {
+  return endedEvents().filter((e) => e.kind === 'slip');
+}
+/** Ends the session and returns all its events. */
+function endedEvents(): BuddyEvent[] {
   const id = ctrl.end();
-  return db.sessions(0).find((s) => s.id === id)!.events.filter((e) => e.kind === 'slip');
+  return db.sessions(0).find((s) => s.id === id)!.events;
 }
 
 beforeEach(async () => {
@@ -77,6 +85,7 @@ beforeEach(async () => {
   now = T0;
   calls = [];
   covered = true;
+  lost = {};
   apps = { fine: ['code.exe', ...DEFAULT_SETTINGS.apps.fine], gray: ['spotify.exe'], hard: ['steam.exe'] };
 });
 afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
@@ -295,6 +304,168 @@ describe('AppGuard', () => {
   });
 });
 
+describe('AppGuard browser windows with real coverage (C1)', () => {
+  const report = (...titles: string[]): WindowReport[] => titles.map((title) => ({ title, incognito: false, focused: true }));
+  let reports: { browser: BrowserKind; windows: WindowReport[] }[];
+  function startReal(): void {
+    ctrl = new SessionController(db, () => now, { rhythm: RHYTHM });
+    guard = new AppGuard(ctrl, ui, () => apps, (f) => isBrowserCovered(f, reports), OWN, () => now);
+    ctrl.start({ topic: 'Maths', mode: 'laptop', goal: null, plannedMin: null });
+  }
+
+  test('file dialogs, DevTools and sign-in popups of a connected browser are never overlaid', () => {
+    reports = [{ browser: 'chrome', windows: report('NotebookLM', 'Sign in - Google Accounts') },
+      { browser: 'edge', windows: report('Claude') }];
+    startReal();
+    const titles = ['Open', 'Save As', 'DevTools - notebooklm.google.com/', 'Sign in - Google Accounts - Google Chrome',
+      'Choose a profile', 'NotebookLM - Google Chrome'];
+    for (const title of titles) {
+      guard.onForeground(fg('chrome.exe', 100, title));
+      runTo(now + 10 * S);
+    }
+    for (const title of ['Open', 'Save As', 'DevTools - claude.ai/new', 'Claude - Personal - Microsoft\u200b Edge']) {
+      guard.onForeground(fg('msedge.exe', 101, title));
+      runTo(now + 10 * S);
+    }
+    expect(of('overlay')).toEqual([]);
+    expect(slips()).toEqual([]);
+  });
+
+  test('an unreported tab window (e.g. incognito the extension cannot see) is still overlaid after 3 s', () => {
+    reports = [{ browser: 'chrome', windows: report('NotebookLM') }];
+    startReal();
+    guard.onForeground(fg('chrome.exe', 100, 'Reddit - Google Chrome (Incognito)'));
+    runTo(T0 + 4 * S);
+    expect(of('overlay').map((c) => c.label)).toEqual([BROWSER_LABEL]);
+    // A dialog of a browser kind with no extension connected is overlaid too (spec: unconnected browser).
+    guard.onForeground(fg('msedge.exe', 101, 'Open'));
+    runTo(T0 + 9 * S);
+    expect(of('overlay').map((c) => c.label)).toEqual([BROWSER_LABEL, BROWSER_LABEL]);
+  });
+});
+
+describe('AppGuard gating (I3, I6)', () => {
+  test('gray prompt closes without a slip when the foreground leaves that app (our own windows do not count)', () => {
+    start();
+    guard.onForeground(fg('spotify.exe'));
+    expect(promptUp()).toBe(true);
+    guard.onForeground(fg('electron.exe', OWN)); // clicking the prompt / mini keeps it
+    runTo(T0 + 5 * S);
+    expect(promptUp()).toBe(true);
+    guard.onForeground(fg('code.exe'));
+    expect(promptUp()).toBe(false);
+    runTo(T0 + 2 * M); // the old prompt's 30 s timeout must not fire later
+    expect(slips()).toEqual([]);
+  });
+
+  test('no gray asks or re-asks while paused; an open prompt closes without a slip on pause', () => {
+    start();
+    guard.onForeground(fg('spotify.exe'));
+    expect(promptUp()).toBe(true);
+    runTo(T0 + 10 * S);
+    ctrl.pause(now);
+    guard.tick();
+    expect(promptUp()).toBe(false);
+    runTo(T0 + 10 * M);
+    expect(of('prompt')).toHaveLength(1);
+    ctrl.resume();
+    guard.tick();
+    expect(of('prompt')).toHaveLength(2);
+    expect(slips()).toEqual([]);
+  });
+
+  test('unlisted time does not accrue while paused', () => {
+    start();
+    guard.onForeground(fg('game.exe'));
+    runTo(T0 + 60 * S);
+    ctrl.pause(now);
+    runTo(T0 + 10 * M);
+    ctrl.resume();
+    runTo(now + 59 * S);
+    expect(of('offer')).toEqual([]);
+    runTo(now + S);
+    expect(of('offer')).toEqual([{ t: 'offer', exe: 'game.exe' }]);
+  });
+
+  test('Windows shell/host processes are never prompted, offered or overlaid, even if listed', () => {
+    apps = { ...apps, gray: [...apps.gray, 'searchhost.exe'], hard: [...apps.hard, 'lockapp.exe'] };
+    start();
+    for (const exe of ['lockapp.exe', 'searchhost.exe', 'startmenuexperiencehost.exe', 'shellexperiencehost.exe',
+      'applicationframehost.exe', 'systemsettings.exe', 'textinputhost.exe', 'searchapp.exe']) {
+      expect(guard.classify(exe)).toBe('system');
+      guard.onForeground(fg(exe));
+      runTo(now + 3 * M);
+    }
+    expect(calls.filter((c) => c.t !== 'hideOverlay')).toEqual([]);
+    expect(slips()).toEqual([]);
+  });
+
+  test('claude.exe is fine by default', () => {
+    apps = DEFAULT_SETTINGS.apps;
+    start();
+    expect(guard.classify('claude.exe')).toBe('fine');
+    guard.onForeground(fg('claude.exe'));
+    runTo(T0 + 5 * M);
+    expect(of('offer')).toEqual([]);
+  });
+
+  test('the offer window is hidden when the session ends', () => {
+    start();
+    guard.onForeground(fg('game.exe'));
+    runTo(T0 + 2 * M);
+    expect(of('offer')).toHaveLength(1);
+    ctrl.end();
+    expect(of('hideOffer')).toHaveLength(1);
+  });
+});
+
+describe('AppGuard extension-disconnected bypass (I4)', () => {
+  const bypasses = () => endedEvents().filter((e) => e.kind === 'bypass' && e.target === 'extension-disconnected');
+
+  test('logged once, only after an uncovered window of the lost browser kind has been in front for 10 s', () => {
+    start();
+    covered = true;
+    guard.onForeground(fg('chrome.exe'));
+    runTo(T0 + 10 * S);
+    // Extension drops (browser closed, or switched off). Nothing in front of that kind → nothing logged.
+    lost.chrome = now;
+    covered = false;
+    guard.onForeground(fg('code.exe'));
+    runTo(T0 + 5 * M);
+    // Browser reopened: uncovered while the extension reconnects → no bypass within 10 s.
+    guard.onForeground(fg('chrome.exe'));
+    runTo(now + 9 * S);
+    delete lost.chrome;
+    covered = true;
+    runTo(now + 30 * S);
+    // Lost again, and the browser stays uncovered in front → one bypass after 10 s.
+    lost.chrome = now;
+    covered = false;
+    runTo(now + 10 * S); // first uncovered tick is 1 s after the drop
+    const at = now + S;
+    runTo(at + 2 * M);
+    guard.onForeground(fg('code.exe'));
+    guard.onForeground(fg('chrome.exe'));
+    runTo(now + 1 * M);
+    expect(bypasses()).toEqual([{ at, kind: 'bypass', target: 'extension-disconnected', detail: null }]);
+  });
+
+  test('none for another browser kind, while not blocking, or for a link lost before the session started', () => {
+    lost.edge = T0 - M;
+    start();
+    covered = false;
+    guard.onForeground(fg('msedge.exe')); // lost before this session
+    runTo(T0 + M);
+    lost.chrome = now;
+    guard.onForeground(fg('firefox.exe')); // no extension kind
+    runTo(now + M);
+    ctrl.turnOffBlocking('I am choosing to stop studying');
+    guard.onForeground(fg('chrome.exe'));
+    runTo(now + M);
+    expect(bypasses()).toEqual([]);
+  });
+});
+
 describe('AppGuard overlay dismiss', () => {
   test('dismissed overlay re-arms within 5 s while the hard app stays in front; not after switching away', () => {
     start();
@@ -352,9 +523,11 @@ describe('SharedHotkey (Ctrl+Alt+Y owner)', () => {
   test('binds once, answers the most recently shown owner, falls back on release, unbinds when empty', () => {
     const log: string[] = [];
     let fire: (() => void) | null = null;
+    let t = 0;
     const key = new SharedHotkey(
       (fn) => { log.push('bind'); fire = fn; return true; },
       () => { log.push('unbind'); fire = null; },
+      () => (t += 1000), // every claim/fire is a second apart: never debounced or unarmed here
     );
     key.claim('checkin', () => log.push('checkin:Y'));
     key.claim('prompt', () => log.push('prompt:Y'));
@@ -390,5 +563,39 @@ describe('SharedHotkey (Ctrl+Alt+Y owner)', () => {
     expect(binds).toBe(2);
     key.claim('c', () => {});
     expect(binds).toBe(2);
+  });
+
+  test('ignores a fire within 750 ms of the previous one (second press / key auto-repeat after the prompt closes)', () => {
+    let t = 10_000;
+    const log: string[] = [];
+    let fire: (() => void) | null = null;
+    const key = new SharedHotkey((fn) => { fire = fn; return true; }, () => { fire = null; }, () => t);
+    key.claim('checkin', () => log.push('checkin'));
+    t += 2000;
+    key.claim('prompt', () => { log.push('prompt'); key.release('prompt'); });
+    t += 1000;
+    fire!(); // answers the prompt, which releases → the check-in is the owner now
+    t += 40;
+    fire!(); // auto-repeat: ignored
+    t += 400;
+    fire!(); // still within 750 ms of the last (ignored) fire: ignored
+    expect(log).toEqual(['prompt']);
+    t += 800;
+    fire!(); // a deliberate later press answers the check-in
+    expect(log).toEqual(['prompt', 'checkin']);
+  });
+
+  test('ignores a fire aimed at an owner shown less than 500 ms ago', () => {
+    let t = 10_000;
+    const log: string[] = [];
+    let fire: (() => void) | null = null;
+    const key = new SharedHotkey((fn) => { fire = fn; return true; }, () => {}, () => t);
+    key.claim('checkin', () => log.push('checkin'));
+    t += 300;
+    fire!();
+    expect(log).toEqual([]);
+    t += 1000;
+    fire!();
+    expect(log).toEqual(['checkin']);
   });
 });

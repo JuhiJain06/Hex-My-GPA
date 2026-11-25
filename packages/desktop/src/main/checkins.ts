@@ -103,6 +103,8 @@ export class CheckinRunner {
     // Book mode has no topic switch; laptop mode has no page count.
     const book = this.visible.mode === 'book';
     if ((a === 'switched' && book) || (typeof a === 'object' && !book)) return;
+    // Resume first: a "drifted" slip only counts in unpaused focus.
+    if (this.ctrl.engine.state.pausedSince !== null) this.ctrl.resume();
     if (a === 'yes') this.log('yes');
     else if (a === 'switched') {
       if (newTopic) this.ctrl.setTopic(newTopic);
@@ -112,7 +114,16 @@ export class CheckinRunner {
       this.ctrl.logEvent({ kind: 'slip', target: 'check-in', detail: null });
     } else this.log(`pages:${a.pages}`);
     this.hide();
-    if (this.ctrl.engine.state.pausedSince !== null) this.ctrl.resume();
+    this.schedule();
+  }
+
+  /**
+   * The user closed the check-in window itself (e.g. Alt+F4): treat it as dismissed. Nothing is
+   * logged, a later hotkey for it is ignored, and the next check-in is scheduled.
+   */
+  dismissed(): void {
+    if (!this.visible) return;
+    this.visible = null;
     this.schedule();
   }
 

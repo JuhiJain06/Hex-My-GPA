@@ -44,6 +44,7 @@ export class SessionController extends EventEmitter {
   private suggestion: string | null = null;
   private lastSuggestion: string | null = null;
   private extConnected = false;
+  private bridgeOk = true;
   private videos: string[] = [];
   /** Finished-session intervals from the db for the streak window; refreshed per day and after end(). */
   private history: { day: string; intervals: [number, number][] } | null = null;
@@ -140,12 +141,25 @@ export class SessionController extends EventEmitter {
     return id;
   }
 
+  /**
+   * Logs an event for the running session. Slips count only while they can be real: a blocked
+   * site/app/video slip needs active, unpaused blocking (not breaks, awaitingNext, the turn-off
+   * sentence or a pause); a check-in "drifted" slip needs unpaused focus (check-ins continue after
+   * the sentence). Anything else is dropped.
+   */
   logEvent(e: Omit<BuddyEvent, 'at'>): void {
     const id = this.id;
     if (id === null) return;
+    if (e.kind === 'slip' && !this.slipAllowed(e.target)) return;
     const at = this.clock();
     this.safe('addEvent', () => this.db.addEvent(id, { ...e, at }));
     if (e.kind === 'slip') this.emit('slip', at);
+  }
+
+  private slipAllowed(target: string | null): boolean {
+    const s = this.eng.state;
+    if (s.pausedSince !== null) return false;
+    return target === 'check-in' ? s.phase === 'focus' : this.eng.blockingActive;
   }
 
   /** Re-emits the UiState (after settings changed, e.g. a new study buddy). */
@@ -175,6 +189,13 @@ export class SessionController extends EventEmitter {
     this.emitUi();
   }
 
+  /** False when the extension bridge could not listen (port in use): shown in the mini window. */
+  setBridgeListening(ok: boolean): void {
+    if (ok === this.bridgeOk) return;
+    this.bridgeOk = ok;
+    this.emitUi();
+  }
+
   uiState(): UiState {
     const now = this.clock();
     const s = this.eng.state;
@@ -197,6 +218,7 @@ export class SessionController extends EventEmitter {
       streakDays: streak(totals, today, streakMin),
       blockingActive: this.id !== null && this.eng.blockingActive,
       extensionConnected: this.extConnected,
+      bridgeListening: this.bridgeOk,
       suggestion: phase === 'break' || phase === 'awaitingNext' ? this.suggestion : null,
       animal,
     };

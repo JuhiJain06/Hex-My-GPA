@@ -8,8 +8,11 @@ import { summarize } from '@study-buddy/core';
 import { buildHistory } from './history';
 import { parseReflection } from './reflection';
 import { parseSettings, parseSound } from './settingsValidate';
+import { parseStart } from './startRequest';
+
+export { parseStart };
 import { clampHeight, MINI_H, MINI_MAX_H, MINI_W } from '../shared/layout';
-import { IPC, type HistoryView, type OfferAnswerMsg, type SettingsSaveResult, type StartRequest, type SummaryView, type WindowName } from '../shared/ipc';
+import { IPC, type HistoryView, type OfferAnswerMsg, type SettingsSaveResult, type SummaryView, type WindowName } from '../shared/ipc';
 
 const DAY_MS = 86_400_000;
 
@@ -56,19 +59,6 @@ function handle(channel: string, fn: (payload: unknown) => unknown): void {
     if (!fromUs(e)) throw new Error('Rejected sender');
     return fn(payload);
   });
-}
-
-export function parseStart(p: unknown): StartRequest | null {
-  if (typeof p !== 'object' || p === null) return null;
-  const r = p as Record<string, unknown>;
-  const topic = typeof r.topic === 'string' ? r.topic.trim().slice(0, 200) : '';
-  if (!topic) return null;
-  const mode = r.mode === 'book' ? 'book' : r.mode === 'laptop' ? 'laptop' : null;
-  if (!mode) return null;
-  const goal = typeof r.goal === 'string' && r.goal.trim() ? r.goal.trim().slice(0, 500) : null;
-  const pm = typeof r.plannedMin === 'number' && Number.isFinite(r.plannedMin) && r.plannedMin > 0
-    ? Math.min(Math.round(r.plannedMin), 24 * 60) : null;
-  return { topic, mode, goal, plannedMin: pm };
 }
 
 export function registerIpc(deps: IpcDeps): void {
