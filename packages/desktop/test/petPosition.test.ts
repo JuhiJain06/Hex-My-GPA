@@ -41,8 +41,9 @@ describe('clampPetPos', () => {
     expect(clampPetPos({ x: 100, y: 1200 }, displays, size)).toEqual({ x: 100, y: 1040 - PET_H });
   });
   test('straddling two displays: clamped onto the display holding its center', () => {
-    expect(clampPetPos({ x: 1900, y: 100 }, displays, size)).toEqual({ x: 1920, y: 100 });
-    expect(clampPetPos({ x: 1800, y: 100 }, displays, size)).toEqual({ x: 1920 - PET_W, y: 100 });
+    // Center just right of the seam (1920): onto the right display; just left of it: onto the primary.
+    expect(clampPetPos({ x: 1920 - PET_W / 2 + 20, y: 100 }, displays, size)).toEqual({ x: 1920, y: 100 });
+    expect(clampPetPos({ x: 1920 - PET_W / 2 - 20, y: 100 }, displays, size)).toEqual({ x: 1920 - PET_W, y: 100 });
   });
   test('in a gap below the shorter display: goes to the nearest display', () => {
     const p = clampPetPos({ x: 2500, y: 1000 }, displays, size);
@@ -74,12 +75,13 @@ describe('restorePetPos', () => {
 });
 
 describe('menuBounds', () => {
-  const pet = { x: 1708, y: 1040 - PET_H, width: PET_W, height: PET_H }; // default spot
+  const X = 1920 - PET_W - 12; // default spot
+  const pet = { x: X, y: 1040 - PET_H, width: PET_W, height: PET_H };
   test('pet on the right half: the menu opens to its left, growing upward from the pet\'s bottom', () => {
     const r = menuBounds(pet, { width: 210, height: 300 }, primary);
     expect(r.side).toBe('left');
     expect(r.anchor).toBe('bottom');
-    expect(r.bounds).toEqual({ x: 1708 - 210, y: 1040 - 300, width: PET_W + 210, height: 300 });
+    expect(r.bounds).toEqual({ x: X - 210, y: 1040 - 300, width: PET_W + 210, height: 300 });
   });
   test('pet on the left half: the menu opens to its right', () => {
     const r = menuBounds({ ...pet, x: 20 }, { width: 210, height: 150 }, primary);

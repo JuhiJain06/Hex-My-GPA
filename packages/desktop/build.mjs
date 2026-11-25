@@ -4,7 +4,8 @@
 //   dist/preload.cjs    preload (CJS, as sandboxed preloads require)
 //   dist/renderer/*     one IIFE bundle per renderer + its html + the renderer css (common, pet), plus core's theme
 //                       tokens.css (imported by common.css) and sprite.css
-//   dist/renderer/art/*.png  the buddies' character art (core/buddy/art), unaltered
+//   dist/renderer/art/*.png  the buddies' character art (core/buddy/art), unaltered: standing poses,
+//                            and art/scenes/*.png the studying / break / asleep scenes
 import { build } from 'esbuild';
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -44,4 +45,8 @@ copyFileSync(join(core, 'buddy', 'sprite.css'), join(rendererOut, 'sprite.css'))
 const artSrc = join(core, 'buddy', 'art');
 mkdirSync(join(rendererOut, 'art'), { recursive: true });
 for (const f of readdirSync(artSrc).filter((f) => f.endsWith('.png'))) copyFileSync(join(artSrc, f), join(rendererOut, 'art', f));
+mkdirSync(join(rendererOut, 'art', 'scenes'), { recursive: true });
+for (const f of readdirSync(join(artSrc, 'scenes')).filter((f) => f.endsWith('.png'))) {
+  copyFileSync(join(artSrc, 'scenes', f), join(rendererOut, 'art', 'scenes', f));
+}
 console.log(`built main, watchdog, preload and ${htmlPages.length} renderers → dist/`);

@@ -4,7 +4,7 @@
 //   dist/youtube.js                     content script (IIFE)
 //   dist/manifest.json
 //   dist/{tokens,sprite}.css            core's theme tokens and buddy animations, linked by the pages
-//   dist/art/*.png                      the buddies' character art (core/buddy/art), unaltered
+//   dist/art/*.png, dist/art/scenes/*.png  the buddies' character art (core/buddy/art), unaltered
 // A CSS import in TS is the file's text (the YouTube card puts the tokens in its shadow root).
 import { build } from 'esbuild';
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
@@ -34,4 +34,8 @@ copyFileSync(join(core, 'buddy', 'sprite.css'), join(out, 'sprite.css'));
 const artSrc = join(core, 'buddy', 'art');
 mkdirSync(join(out, 'art'), { recursive: true });
 for (const f of readdirSync(artSrc).filter((f) => f.endsWith('.png'))) copyFileSync(join(artSrc, f), join(out, 'art', f));
+mkdirSync(join(out, 'art', 'scenes'), { recursive: true });
+for (const f of readdirSync(join(artSrc, 'scenes')).filter((f) => f.endsWith('.png'))) {
+  copyFileSync(join(artSrc, 'scenes', f), join(out, 'art', 'scenes', f));
+}
 console.log(`built background, youtube and ${htmlPages.length} pages -> dist/`);

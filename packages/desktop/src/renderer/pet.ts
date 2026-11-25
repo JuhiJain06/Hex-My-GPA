@@ -3,7 +3,7 @@ import { $, buddy, hm, IPC, onEngine, onState, type UiState } from './api';
 import { liveBuddy } from './buddy/live';
 import { FREQ_PRESETS, SoundEngine, fadeAction, normalizeChoice, shouldBeAudible } from './audio';
 import { extensionStatusText } from '../shared/labels';
-import { PET_ART_H, PET_FOOT_GAP, PET_MENU_W } from '../shared/layout';
+import { bubbleBottom, PET_ART_H, PET_ART_MAX_W, PET_FOOT_GAP, PET_MENU_W, PET_W } from '../shared/layout';
 import {
   HitSync, NoticeQueue, alphaFromRgba, bubbleText, closeOnBlur, plannedText, shouldShowExtNotice, spriteHit, type AlphaMask,
 } from '../shared/pet';
@@ -24,9 +24,18 @@ const btn = (id: string) => $<HTMLButtonElement>(id);
 const petEl = $('pet');
 const bubble = $('bubble');
 const menu = $('menu');
-// The art stands PET_FOOT_GAP above the window's bottom (the taskbar); the bubble sits above its head.
+// The picture stands PET_FOOT_GAP above the window's bottom (the taskbar); the bubble sits above its
+// top-center, and the menu opens right beside it. Pictures differ in size, so both follow each swap.
 petEl.style.bottom = `${PET_FOOT_GAP}px`;
-bubble.style.bottom = `${PET_FOOT_GAP + PET_ART_H + 8}px`;
+function fitToPicture(width: number, height: number): void {
+  bubble.style.bottom = `${bubbleBottom(height)}px`;
+  document.body.style.setProperty('--pet-pad', `${Math.max(0, Math.floor((PET_W - width) / 2))}px`);
+}
+fitToPicture(PET_ART_H, PET_ART_H);
+petEl.addEventListener('sprite:picture', (e) => {
+  const d = (e as CustomEvent<{ width: number; height: number }>).detail;
+  fitToPicture(d.width, d.height);
+});
 
 // ---- Speech bubble ----
 const notices = new NoticeQueue();
@@ -93,7 +102,7 @@ onState((s) => {
   render();
   syncAudible();
 });
-liveBuddy(petEl, PET_ART_H);
+liveBuddy(petEl, PET_ART_H, { maxWidth: PET_ART_MAX_W });
 setInterval(render, 250);
 
 btn('extend').addEventListener('click', () => buddy.send(IPC.blockExtend));
@@ -103,14 +112,16 @@ btn('end').addEventListener('click', () => buddy.send(IPC.sessionEnd));
 btn('resume').addEventListener('click', () => buddy.send(IPC.sessionResume));
 
 // ---- Click-through: only the pet's painted pixels, the bubble and the menu catch the mouse ----
-/** Alpha of each pet image, read once per image (null: unreadable, so the inset box is used). */
+/**
+ * Alpha of each picture, read once per picture from the plain image (null: unreadable, so the inset
+ * box is used). The ears and tail move on the canvas, but hit-testing uses the still picture.
+ */
 const masks = new Map<string, AlphaMask | null>();
-/** Images whose load we already wait for (the mask is read once they have loaded). */
-const waiting = new WeakSet<HTMLImageElement>();
+/** The plain images the masks are read from, by the picture's path. */
+const maskImages = new Map<string, HTMLImageElement>();
 
-function readMask(img: HTMLImageElement): void {
-  const src = img.currentSrc || img.src;
-  if (masks.has(src) || !img.complete || img.naturalWidth === 0) return;
+function readMask(key: string, img: HTMLImageElement): void {
+  if (masks.has(key) || !img.complete || img.naturalWidth === 0) return;
   try {
     const canvas = document.createElement('canvas');
     canvas.width = img.naturalWidth;
@@ -119,25 +130,31 @@ function readMask(img: HTMLImageElement): void {
     if (!ctx) throw new Error('no 2d context');
     ctx.drawImage(img, 0, 0);
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data; // throws if tainted
-    masks.set(src, { width: canvas.width, height: canvas.height, alpha: alphaFromRgba(data) });
+    masks.set(key, { width: canvas.width, height: canvas.height, alpha: alphaFromRgba(data) });
   } catch (err) {
     console.warn('pet: image alpha unavailable, using its box', err);
-    masks.set(src, null);
+    masks.set(key, null);
   }
 }
 
 function onPet(x: number, y: number): boolean {
-  const img = petEl.querySelector<HTMLImageElement>('img.sp-art');
-  if (!img) return false;
-  const src = img.currentSrc || img.src;
-  if (!masks.has(src)) {
-    if (!img.complete) {
-      if (!waiting.has(img)) { waiting.add(img); img.addEventListener('load', () => readMask(img), { once: true }); }
-      return false;
+  // The shown picture: its canvas (or the plain <img> fallback) carries the picture's path.
+  const art = petEl.querySelector<HTMLElement>('.sp-art');
+  const key = art?.dataset.src;
+  if (!art || !key) return false;
+  if (!masks.has(key)) {
+    let img = maskImages.get(key);
+    if (!img) {
+      img = new Image();
+      const im = img;
+      im.addEventListener('load', () => readMask(key, im), { once: true });
+      im.src = key;
+      maskImages.set(key, im);
     }
-    readMask(img);
+    if (!img.complete) return false;
+    readMask(key, img);
   }
-  return spriteHit(img.getBoundingClientRect(), masks.get(src) ?? null, x, y);
+  return spriteHit(art.getBoundingClientRect(), masks.get(key) ?? null, x, y);
 }
 const hits = new HitSync((h) => buddy.send(IPC.petHit, h));
 let dragging = false;

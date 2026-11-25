@@ -30,7 +30,7 @@ for (const a of ANIMALS) {
   name.textContent = a.label;
   const pic = document.createElement('span');
   pic.className = 'pic';
-  pic.appendChild(petSprite(a.id, 'wave', 72));
+  pic.appendChild(petSprite(a.id, 'wave', 72, 'art/', { fluid: true }));
   tile.append(pic, name);
   tile.addEventListener('click', () => selectAnimal(a.id));
   tiles.set(a.id, tile);

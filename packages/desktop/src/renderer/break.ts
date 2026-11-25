@@ -29,7 +29,7 @@ onEngine((e) => {
   if (breakChime({ kind: 'event', event: e }, chimedForBreak)) chime();
 });
 setInterval(render, 250);
-liveBuddy($('buddy'), 160);
+liveBuddy($('buddy'), 160, { maxWidth: 340 });
 
 $('start').addEventListener('click', () => buddy.send(IPC.blockNext));
 $('endSession').addEventListener('click', () => buddy.send(IPC.sessionEnd));

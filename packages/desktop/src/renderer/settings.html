@@ -23,11 +23,13 @@
     section.focus { outline: 2px solid var(--accent-text); outline-offset: 8px; border-radius: var(--radius-sm); }
     ol { margin: 6px 0; padding-left: 20px; }
     li { margin: 2px 0; }
-    .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-    .tile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px;
+    .tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+    .tile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px; min-width: 0;
       border-radius: var(--radius); border: 2px solid var(--line); background: var(--card); cursor: pointer; }
     .tile[aria-checked="true"] { border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 2px var(--accent) inset; }
-    .tile .pic { display: flex; justify-content: center; align-items: flex-end; height: 76px; width: 100%; }
+    .tile .pic { display: flex; justify-content: center; align-items: flex-end; height: 76px; width: 100%; min-width: 0; }
+    /* The standing pose shrinks to fit a narrow tile (the window can be 520 px wide). */
+    .tile .pic .sprite { flex: 0 1 auto; }
     .tile .name { font-size: 12px; }
     /* Don't let all six previews hop in unison. */
     .tile:nth-child(2) .sp-figure { animation-delay: -0.4s; }

@@ -1,18 +1,25 @@
 /** Window sizes shared by the main process and the renderers. Pure; no Electron imports. */
 
 /**
- * The desktop pet window with its menu closed: the pet's art stands at the bottom (its feet
+ * The desktop pet window with its menu closed: the pet's picture stands at the bottom (its feet
  * PET_FOOT_GAP above the window's bottom, which sits on the work area's bottom, i.e. the taskbar),
- * with room for the speech bubble above its head. 200 wide so the widest pets (fox, dog) fit.
+ * with room for the speech bubble above it. Wide enough for the widest scene (PET_ART_MAX_W) plus
+ * a little margin.
  */
-export const PET_W = 200;
+export const PET_W = 336;
 export const PET_H = 230;
-/** The pet's art height in the pet window (its width follows each image's aspect ratio). */
+/** The pet's picture height in the pet window (its width follows each picture's aspect ratio). */
 export const PET_ART_H = 150;
+/** The widest the picture may be; a wider scene is shown shorter so it fits. */
+export const PET_ART_MAX_W = 320;
 /** Gap between the bottom of the pet's feet and the taskbar. */
 export const PET_FOOT_GAP = 6;
 /** Room above the pet's head for the bubble (the planned-length notice with its buttons is the tallest). */
 export const PET_BUBBLE_ROOM = PET_H - PET_ART_H - PET_FOOT_GAP;
+/** Gap between the top of the picture and the bubble's tail. */
+export const PET_BUBBLE_GAP = 8;
+/** The bubble's bottom (px above the window's bottom) over a picture `artH` px tall. */
+export const bubbleBottom = (artH: number): number => PET_FOOT_GAP + artH + PET_BUBBLE_GAP;
 /** The pet's menu beside it (including a small gap). */
 export const PET_MENU_W = 244;
 

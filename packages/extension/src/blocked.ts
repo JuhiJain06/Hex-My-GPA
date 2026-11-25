@@ -9,8 +9,9 @@ document.getElementById('msg')!.textContent = blockedMessage(params.get('until')
 document.getElementById('site')!.textContent = site;
 
 void chrome.storage.local.get('lastState').then(({ lastState }) => {
-  // The chosen animal, a little sad but kind (drawn once the animal is known, so no cat flashes by).
-  document.getElementById('buddy')!.replaceChildren(petSprite(animalOf(lastState), 'sad', 140));
+  // The chosen animal at its desk, a little sad but kind (drawn once the animal is known, so no cat
+  // flashes by). At most 196 px wide, so it still sits beside the heading in the card.
+  document.getElementById('buddy')!.replaceChildren(petSprite(animalOf(lastState), 'sad', 140, 'art/', { maxWidth: 196 }));
   const topic = (lastState as { topic?: unknown } | undefined)?.topic;
   if (typeof topic === 'string' && topic.trim() !== '') {
     const el = document.getElementById('topic')!;

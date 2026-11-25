@@ -1,7 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
 import { ANIMALS } from '@study-buddy/core';
-import { spriteWidth } from '@study-buddy/core/buddy/sprite';
-import { clampHeight, PET_ART_H, PET_BUBBLE_ROOM, PET_FOOT_GAP, PET_H, PET_W, SCREEN_MARGIN, stackBounds, type StackSlot } from '../src/shared/layout';
+import { MOODS } from '@study-buddy/core';
+import { spriteSize } from '@study-buddy/core/buddy/sprite';
+import {
+  bubbleBottom, clampHeight, PET_ART_H, PET_ART_MAX_W, PET_BUBBLE_ROOM, PET_FOOT_GAP, PET_H, PET_W, SCREEN_MARGIN, stackBounds, type StackSlot,
+} from '../src/shared/layout';
 import { createClickArming } from '../src/shared/arming';
 import { loggingGuardUi, type GuardUi } from '../src/main/appGuard';
 
@@ -17,17 +20,32 @@ describe('clampHeight', () => {
   test('never below 100 px', () => {
     expect(clampHeight(700, 50)).toBe(100);
   });
-  test('the pet window is small (about 200 x 220)', () => {
-    expect(PET_W).toBeGreaterThanOrEqual(180);
-    expect(PET_W).toBeLessThanOrEqual(220);
+  test('the pet window is small: about 150 px of picture, up to 320 wide, with the bubble above', () => {
+    expect(PET_W).toBe(PET_ART_MAX_W + 16);
+    expect(PET_ART_MAX_W).toBe(320);
     expect(PET_H).toBeGreaterThanOrEqual(200);
     expect(PET_H).toBeLessThanOrEqual(240);
   });
-  test('the pet art is about 150 px tall, every animal fits the width, and the bubble fits above its head', () => {
+  test('every picture of every pet is about 150 px tall and fits the width (the widest scenes are shorter)', () => {
     expect(PET_ART_H).toBe(150);
-    for (const a of ANIMALS) expect(spriteWidth(a.id, PET_ART_H), a.id).toBeLessThanOrEqual(PET_W - 16);
+    let shortest = Infinity;
+    for (const a of ANIMALS) {
+      for (const m of MOODS) {
+        const [w, h] = spriteSize(a.id, m, PET_ART_H, PET_ART_MAX_W);
+        expect(w, `${a.id} ${m}`).toBeLessThanOrEqual(PET_ART_MAX_W);
+        expect(h, `${a.id} ${m}`).toBeLessThanOrEqual(PET_ART_H);
+        shortest = Math.min(shortest, h);
+      }
+    }
+    expect(shortest).toBe(120); // the dog stretched out on its back
+    expect(spriteSize('dog', 'break', PET_ART_H, PET_ART_MAX_W)).toEqual([320, 120]);
+    expect(spriteSize('cat', 'study', PET_ART_H, PET_ART_MAX_W)).toEqual([216, 150]);
+  });
+  test('the bubble sits above the picture and fits the window', () => {
     expect(PET_FOOT_GAP + PET_ART_H + PET_BUBBLE_ROOM).toBeLessThanOrEqual(PET_H);
     expect(PET_BUBBLE_ROOM).toBeGreaterThanOrEqual(60); // the planned-length notice with its two buttons
+    expect(bubbleBottom(150)).toBe(6 + 150 + 8);
+    expect(bubbleBottom(120)).toBe(6 + 120 + 8);
   });
 });
 

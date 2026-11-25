@@ -8,7 +8,7 @@ interface PanelUpdate { connected: boolean; state: StateMsg | null }
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 let cur: PanelUpdate = { connected: false, state: null };
 const buddyEl = $('buddy');
-const buddy = spriteSlot(buddyEl, 64);
+const buddy = spriteSlot(buddyEl, 64, 'art/', { maxWidth: 150 });
 
 function render(): void {
   const { connected, state } = cur;
