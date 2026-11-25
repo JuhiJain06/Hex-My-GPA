@@ -822,3 +822,21 @@ test('restore with --restored-by-watchdog logs one app-closed bypass', () => {})
 - [ ] Extension pages show the chosen animal (blocked page: `sad` mood; side panel: mood from state).
 - [ ] Manual check via CDP screenshots of every window in light and dark.
 - [ ] Commit `feat: pastel theme`
+
+### Task 21: Desktop pet replaces the mini window (spec Addendum 2)
+
+**Files:**
+- Create: `packages/desktop/src/renderer/pet.{html,ts,css}`, `packages/desktop/src/main/petWindow.ts` (create/position/drag/click-through), `packages/desktop/src/main/petPosition.ts` (pure: default position from workArea, clamp to displays, persist shape), `packages/core/buddy/scene.ts` (desk + lamp + study animation props around `drawBuddy`)
+- Modify: windows.ts/index.ts/ipc.ts/shared ipc (replace every `mini` use with `pet`), endFlow (fade then close pet), settings (showBubble, reset position), core settings (`pet: { showBubble: boolean; pos: {x:number;y:number;displayId:number}|null }`), parseSettings
+- Delete: `src/renderer/mini.{html,ts}` once everything is moved
+- Test: `petPosition.test.ts`, `scene.test.ts` (jsdom), bubble text helper tests, ipc parse tests for drag/menu messages
+
+**Interfaces:**
+- `defaultPetPos(workArea: Rect, size: Size): Point` — bottom-right, flush above taskbar, 12 px margin
+- `clampPetPos(p: Point, displays: Rect[], size: Size): Point`
+- `bubbleText(ui: UiState, now: number): string` — "mm:ss" in focus, "Paused", "Break · m:ss", "Back to <topic>?" in awaitingNext
+- `drawStudyScene(animal: Animal, mood: Mood, size: number): SVGSVGElement`
+
+- [ ] Tests first for the pure helpers; then the window (transparent, frame:false, skipTaskbar, alwaysOnTop normal level, focusable:false, `setIgnoreMouseEvents(true,{forward:true})` toggled by renderer hit-testing on mousemove), drag via IPC with clamping, menu (focusable only while open), migrate sounds + messages + controls from mini, then delete mini.
+- [ ] Verify headless only (render pet.html in headless Edge with a stubbed preload; screenshots of each mood + bubble + menu). NO Electron launch on the user's desktop.
+- [ ] Commit `feat: desktop pet replaces mini window`

@@ -196,3 +196,16 @@ User request: "make it cute animal like". User chose: pick the animal in Setting
 - Text contrast stays readable (WCAG AA for body text). Dark mode gets a matching muted pastel-on-dark variant.
 - The blocked page and overlay show the chosen animal looking a little sad but kind: "Blocked until break at HH:MM".
 - The extension gets the chosen animal via the existing state message (add `animal` field).
+
+## Addendum 2 (2026-11-26): Desktop pet that studies along
+
+User request: "make it like a cute pet that show up on screen and studies along". User chose: the pet **sits on the taskbar** (draggable), and the pet **replaces the mini timer window**.
+
+- **The pet window:** a small transparent, frameless, always-on-top window (about 200×220) that sits just above the taskbar in the bottom-right corner by default. It has no taskbar button. The user can drag the pet anywhere; the position is remembered (per display, clamped on-screen). Clicks on empty, transparent areas pass straight through to the apps underneath — only the pet, its bubble and its menu catch the mouse.
+- **Studies along:** the pet has its own tiny desk and lamp. In focus it reads, writes in a notebook, turns pages and occasionally sips from a mug (gentle looping animation, never fast or flashy). Break: it stretches, then relaxes. Away/paused: dozes at the desk. Slip: briefly sad. Celebrate: happy bounce with hearts. Same 6 animals and mood rules as Addendum 1.
+- **Speech bubble** above the pet shows the essentials: time left in the block (mm:ss), "Paused", or "Break · 4:12". One-off messages appear in the bubble for a few seconds instead of in the old mini window: "Phone in another room?" at start, the planned-length banner (with End session / Keep going), and "Browser buddy not connected — websites aren't being watched". The bubble can be turned off in Settings (the pet still shows).
+- **Click the pet** → a small menu pops up beside it with today's total, streak, and the old mini buttons: +10 min, End block, Turn off blocking, Sound…, End session. Clicking elsewhere or pressing Esc closes it.
+- **The mini window is removed.** Everything it did moves to the pet: it hosts the focus sounds (and the end-of-session fade), receives the state/engine broadcasts, and is shown/hidden by the same session lifecycle (shown on session start/restore, faded and closed at session end).
+- **Stacking:** the pet is always-on-top at a normal level, below the block overlay, check-ins and prompts.
+- **Settings:** "Your study buddy" section gains *Show speech bubble* (on by default) and *Reset pet position*.
+- **Calm rule still applies:** the pet never walks around, never makes sounds of its own, never steals focus (the pet window is non-focusable except while its menu is open), and respects reduced-motion.
