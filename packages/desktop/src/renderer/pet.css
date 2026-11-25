@@ -2,14 +2,16 @@
 html, body { background: transparent !important; overflow: hidden; height: 100%; }
 body { position: relative; font-size: 12px; }
 
-/* The pet's own 200×220 box; it stays put on screen while the window grows for the menu. */
-#petBox { position: absolute; width: 200px; height: 220px; }
-#pet { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); cursor: grab; touch-action: none; }
+/* The pet's own 200×230 box (PET_W × PET_H); it stays put on screen while the window grows for the menu. */
+#petBox { position: absolute; width: 200px; height: 230px; }
+/* The art, centered, standing 6 px (PET_FOOT_GAP, set by pet.ts) above the taskbar. */
+#pet { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); cursor: grab; touch-action: none; }
 #pet.dragging { cursor: grabbing; }
-#pet .scene { filter: drop-shadow(0 2px 3px rgba(80, 60, 70, 0.18)); }
+/* A soft shadow around the figure so it reads on any wallpaper (the art itself is untouched). */
+#pet .sp-figure { filter: drop-shadow(0 1px 2px rgba(58, 47, 42, 0.25)); }
 
-/* Speech bubble above the buddy's head, its tail pointing down at it. */
-.bubble { position: absolute; left: 50%; bottom: 160px; transform: translateX(-50%); max-width: 192px; width: max-content;
+/* Speech bubble above the buddy's head (bottom set by pet.ts), its tail pointing down at it. */
+.bubble { position: absolute; left: 50%; bottom: 164px; transform: translateX(-50%); max-width: 192px; width: max-content;
   background: var(--card); color: var(--text); border: 1.5px solid var(--line); border-radius: 14px;
   padding: 5px 11px; box-shadow: var(--shadow-sm); text-align: center; line-height: 1.3; }
 .bubble::after, .bubble::before { content: ""; position: absolute; left: 50%; transform: translateX(-50%);

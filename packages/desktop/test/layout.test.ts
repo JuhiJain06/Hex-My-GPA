@@ -1,5 +1,7 @@
 import { describe, test, expect, vi } from 'vitest';
-import { clampHeight, PET_H, PET_W, SCREEN_MARGIN, stackBounds, type StackSlot } from '../src/shared/layout';
+import { ANIMALS } from '@study-buddy/core';
+import { spriteWidth } from '@study-buddy/core/buddy/sprite';
+import { clampHeight, PET_ART_H, PET_BUBBLE_ROOM, PET_FOOT_GAP, PET_H, PET_W, SCREEN_MARGIN, stackBounds, type StackSlot } from '../src/shared/layout';
 import { createClickArming } from '../src/shared/arming';
 import { loggingGuardUi, type GuardUi } from '../src/main/appGuard';
 
@@ -20,6 +22,12 @@ describe('clampHeight', () => {
     expect(PET_W).toBeLessThanOrEqual(220);
     expect(PET_H).toBeGreaterThanOrEqual(200);
     expect(PET_H).toBeLessThanOrEqual(240);
+  });
+  test('the pet art is about 150 px tall, every animal fits the width, and the bubble fits above its head', () => {
+    expect(PET_ART_H).toBe(150);
+    for (const a of ANIMALS) expect(spriteWidth(a.id, PET_ART_H), a.id).toBeLessThanOrEqual(PET_W - 16);
+    expect(PET_FOOT_GAP + PET_ART_H + PET_BUBBLE_ROOM).toBeLessThanOrEqual(PET_H);
+    expect(PET_BUBBLE_ROOM).toBeGreaterThanOrEqual(60); // the planned-length notice with its two buttons
   });
 });
 

@@ -2,22 +2,27 @@ import { describe, test, expect } from 'vitest';
 import {
   PET_MARGIN, clampPetPos, defaultPetPos, menuBounds, parsePetDrag, parsePetMenu, parsePetSize, restorePetPos,
 } from '../src/main/petPosition';
-import { PET_H, PET_W } from '../src/shared/layout';
+import { PET_FOOT_GAP, PET_H, PET_W } from '../src/shared/layout';
 
 const size = { width: PET_W, height: PET_H };
 const primary = { x: 0, y: 0, width: 1920, height: 1040 }; // taskbar at the bottom (1080 - 40)
 const right = { x: 1920, y: 0, width: 1280, height: 984 };
 
 describe('defaultPetPos', () => {
-  test('bottom-right of the work area, 12 px margin, just above a bottom taskbar', () => {
+  test('bottom-right of the work area, 12 px from the right edge, standing on a bottom taskbar', () => {
     expect(PET_MARGIN).toBe(12);
-    expect(defaultPetPos(primary, size)).toEqual({ x: 1920 - PET_W - 12, y: 1040 - PET_H - 12 });
+    expect(defaultPetPos(primary, size)).toEqual({ x: 1920 - PET_W - 12, y: 1040 - PET_H });
+  });
+  test('the feet of the pet sit 6 px above the work-area bottom (the window bottom is the work-area bottom)', () => {
+    expect(PET_FOOT_GAP).toBe(6);
+    const p = defaultPetPos(primary, size);
+    expect(p.y + PET_H - PET_FOOT_GAP).toBe(1040 - 6);
   });
   test('the same rule works for a taskbar on the left or top (work area already excludes it)', () => {
     const leftBar = { x: 48, y: 0, width: 1872, height: 1080 };
-    expect(defaultPetPos(leftBar, size)).toEqual({ x: 48 + 1872 - PET_W - 12, y: 1080 - PET_H - 12 });
+    expect(defaultPetPos(leftBar, size)).toEqual({ x: 48 + 1872 - PET_W - 12, y: 1080 - PET_H });
     const topBar = { x: 0, y: 40, width: 1920, height: 1040 };
-    expect(defaultPetPos(topBar, size)).toEqual({ x: 1920 - PET_W - 12, y: 40 + 1040 - PET_H - 12 });
+    expect(defaultPetPos(topBar, size)).toEqual({ x: 1920 - PET_W - 12, y: 40 + 1040 - PET_H });
   });
   test('rounds to whole pixels', () => {
     const p = defaultPetPos({ x: 0.5, y: 0.25, width: 1000.3, height: 700.7 }, size);
@@ -69,12 +74,12 @@ describe('restorePetPos', () => {
 });
 
 describe('menuBounds', () => {
-  const pet = { x: 1708, y: 808, width: PET_W, height: PET_H }; // default spot
+  const pet = { x: 1708, y: 1040 - PET_H, width: PET_W, height: PET_H }; // default spot
   test('pet on the right half: the menu opens to its left, growing upward from the pet\'s bottom', () => {
     const r = menuBounds(pet, { width: 210, height: 300 }, primary);
     expect(r.side).toBe('left');
     expect(r.anchor).toBe('bottom');
-    expect(r.bounds).toEqual({ x: 1708 - 210, y: 808 + PET_H - 300, width: PET_W + 210, height: 300 });
+    expect(r.bounds).toEqual({ x: 1708 - 210, y: 1040 - 300, width: PET_W + 210, height: 300 });
   });
   test('pet on the left half: the menu opens to its right', () => {
     const r = menuBounds({ ...pet, x: 20 }, { width: 210, height: 150 }, primary);

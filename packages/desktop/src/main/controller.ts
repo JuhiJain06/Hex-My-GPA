@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import {
   SessionEngine,
   dailyTotals,
-  isAnimal,
+  toAnimal,
   localDay,
   pickSuggestion,
   streak,
@@ -207,7 +207,7 @@ export class SessionController extends EventEmitter {
     try {
       const settings = this.db.getSettings();
       streakMin = settings.streakMinMinutes;
-      if (isAnimal(settings.animal)) animal = settings.animal;
+      animal = toAnimal(settings.animal);
       showBubble = settings.pet?.showBubble !== false;
     } catch { /* keep defaults */ }
     const phase: Phase = s.phase;

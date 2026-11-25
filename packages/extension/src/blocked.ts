@@ -1,4 +1,4 @@
-import { drawBuddy } from '@study-buddy/core/buddy/draw';
+import { petSprite } from '@study-buddy/core/buddy/sprite';
 import { animalOf } from './panelLogic';
 import { blockedMessage, continueUrl } from './util';
 
@@ -10,7 +10,7 @@ document.getElementById('site')!.textContent = site;
 
 void chrome.storage.local.get('lastState').then(({ lastState }) => {
   // The chosen animal, a little sad but kind (drawn once the animal is known, so no cat flashes by).
-  document.getElementById('buddy')!.replaceChildren(drawBuddy(animalOf(lastState), 'sad', 140));
+  document.getElementById('buddy')!.replaceChildren(petSprite(animalOf(lastState), 'sad', 140));
   const topic = (lastState as { topic?: unknown } | undefined)?.topic;
   if (typeof topic === 'string' && topic.trim() !== '') {
     const el = document.getElementById('topic')!;

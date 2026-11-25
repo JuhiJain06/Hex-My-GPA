@@ -17,6 +17,16 @@ const snap = (over: Partial<EngineState> = {}): EngineState =>
   ({ intervals: [], blocksCompleted: 0, session: info, ...over }) as unknown as EngineState;
 
 describe('db', () => {
+  test('a saved penguin loads as the dog; an unknown animal as the cat', async () => {
+    const db = await openDb(file);
+    db.saveSettings({ ...DEFAULT_SETTINGS, animal: 'penguin' as never });
+    expect((await openDb(file)).getSettings().animal).toBe('dog');
+    db.saveSettings({ ...DEFAULT_SETTINGS, animal: 'dragon' as never });
+    expect((await openDb(file)).getSettings().animal).toBe('cat');
+    db.saveSettings({ ...DEFAULT_SETTINGS, animal: 'hamster' });
+    expect((await openDb(file)).getSettings().animal).toBe('hamster');
+  });
+
   test('settings default then persist across reopen', async () => {
     const db = await openDb(file);
     expect(db.getSettings()).toEqual(DEFAULT_SETTINGS);

@@ -9,18 +9,22 @@ import type { Rect } from '../shared/layout';
 export interface Point { x: number; y: number }
 export interface Size { width: number; height: number }
 
-/** Gap between the pet and the work-area edges at its default spot. */
+/** Gap between the pet window and the work area's right edge at its default spot. */
 export const PET_MARGIN = 12;
 /** Largest drag step accepted from the renderer (one pointer move). */
 export const MAX_DRAG = 5000;
 /** Largest menu the renderer may ask room for. */
 const MAX_MENU = { width: 600, height: 3000 } as const;
 
-/** Bottom-right of the work area, 12 px from the edges: just above a bottom taskbar (work areas exclude it). */
+/**
+ * Bottom-right of the work area, 12 px from its right edge, with the window's bottom on the work
+ * area's bottom: the pet stands on a bottom taskbar (work areas exclude it), its feet PET_FOOT_GAP
+ * above it (the renderer places the art that far up in the window).
+ */
 export function defaultPetPos(workArea: Rect, size: Size): Point {
   return {
     x: Math.round(workArea.x + workArea.width - size.width - PET_MARGIN),
-    y: Math.round(workArea.y + workArea.height - size.height - PET_MARGIN),
+    y: Math.round(workArea.y + workArea.height - size.height),
   };
 }
 

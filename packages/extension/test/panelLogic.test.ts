@@ -37,6 +37,8 @@ test('formatHm', () => {
 test('animalOf reads the animal from a stored state, defaulting to the cat', () => {
   expect(animalOf({ animal: 'fox' })).toBe('fox');
   expect(animalOf({ animal: 'dragon' })).toBe('cat');
+  expect(animalOf({ animal: 'penguin' })).toBe('dog');
+  expect(animalOf({ animal: 'dog' })).toBe('dog');
   expect(animalOf({})).toBe('cat');
   expect(animalOf(undefined)).toBe('cat');
   expect(animalOf(null)).toBe('cat');

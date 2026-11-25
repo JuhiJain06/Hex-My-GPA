@@ -1,21 +1,30 @@
 import type { Phase } from './engine';
 
-export type Animal = 'cat' | 'fox' | 'panda' | 'bunny' | 'penguin' | 'hamster';
+export type Animal = 'cat' | 'fox' | 'panda' | 'bunny' | 'dog' | 'hamster';
 export type Mood = 'wave' | 'study' | 'break' | 'alert' | 'sleep' | 'sad' | 'celebrate';
 
-/** The study buddies offered in Settings, in display order. Cat is the default. */
+/** The study buddies offered in Settings, in display order (the user's own character art). Cat is the default. */
 export const ANIMALS: readonly { id: Animal; label: string }[] = [
   { id: 'cat', label: 'Cat' },
   { id: 'fox', label: 'Fox' },
   { id: 'panda', label: 'Panda' },
   { id: 'bunny', label: 'Bunny' },
-  { id: 'penguin', label: 'Penguin' },
+  { id: 'dog', label: 'Dog' },
   { id: 'hamster', label: 'Hamster' },
 ];
 
 export const MOODS: readonly Mood[] = ['wave', 'study', 'break', 'alert', 'sleep', 'sad', 'celebrate'];
 
 export const isAnimal = (v: unknown): v is Animal => typeof v === 'string' && ANIMALS.some((a) => a.id === v);
+
+/**
+ * A saved or received animal as one we can show: a known animal is kept, the old `penguin` is now
+ * the dog (the knight took its place), and anything else is the cat (the default).
+ */
+export function toAnimal(v: unknown): Animal {
+  if (v === 'penguin') return 'dog';
+  return isAnimal(v) ? v : 'cat';
+}
 
 /** How long the buddy looks sad after a slip. */
 export const SAD_MS = 3000;

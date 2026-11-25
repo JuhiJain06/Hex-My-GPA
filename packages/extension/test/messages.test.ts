@@ -35,18 +35,20 @@ test('rejects malformed state', () => {
     { ...state, streakDays: -2 },
     { ...state, streakDays: null },
     { ...state, todayMs: undefined },
-    { ...state, animal: 'dragon' },
-    { ...state, animal: 'Fox' },
-    { ...state, animal: null },
-    { ...state, animal: 3 },
   ];
   for (const b of bad) expect(parseDesktopMessage(JSON.stringify(b))).toBeNull();
   expect(parseDesktopMessage(JSON.stringify(state).replace('1700000000000', '1e999'))).toBeNull(); // Infinity
 });
 
 test('state animal: every animal parses; missing means cat (older desktop / stored lastState)', () => {
-  for (const animal of ['cat', 'fox', 'panda', 'bunny', 'penguin', 'hamster']) {
+  for (const animal of ['cat', 'fox', 'panda', 'bunny', 'dog', 'hamster']) {
     expect(parseDesktopMessage(JSON.stringify({ ...state, animal }))).toMatchObject({ animal });
+  }
+  // An older desktop (or a stored lastState) may still say penguin: that buddy is now the dog.
+  expect(parseDesktopMessage(JSON.stringify({ ...state, animal: 'penguin' }))).toMatchObject({ animal: 'dog' });
+  // Anything unknown falls back to the cat instead of dropping the whole state.
+  for (const animal of ['dragon', 'Fox', null, 3]) {
+    expect(parseDesktopMessage(JSON.stringify({ ...state, animal }))).toEqual({ ...state, animal: 'cat' });
   }
   const { animal: _omit, ...old } = state;
   expect(parseDesktopMessage(JSON.stringify(old))).toEqual({ ...state, animal: 'cat' });

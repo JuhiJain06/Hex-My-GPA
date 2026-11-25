@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'">
   <title>Settings</title>
   <link rel="stylesheet" href="common.css">
-  <link rel="stylesheet" href="buddy.css">
+  <link rel="stylesheet" href="sprite.css">
   <style>
     html, body { height: auto; min-height: 100%; }
     body { padding: 22px 24px 84px; overflow-y: auto; }
@@ -27,13 +27,14 @@
     .tile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px;
       border-radius: var(--radius); border: 2px solid var(--line); background: var(--card); cursor: pointer; }
     .tile[aria-checked="true"] { border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 2px var(--accent) inset; }
+    .tile .pic { display: flex; justify-content: center; align-items: flex-end; height: 76px; width: 100%; }
     .tile .name { font-size: 12px; }
-    /* Don't let all six previews blink in unison. */
-    .tile:nth-child(2) .b-eyes--open { animation-delay: -0.7s; }
-    .tile:nth-child(3) .b-eyes--open { animation-delay: -2.1s; }
-    .tile:nth-child(4) .b-eyes--open { animation-delay: -1.3s; }
-    .tile:nth-child(5) .b-eyes--open { animation-delay: -3.2s; }
-    .tile:nth-child(6) .b-eyes--open { animation-delay: -2.6s; }
+    /* Don't let all six previews hop in unison. */
+    .tile:nth-child(2) .sp-figure { animation-delay: -0.4s; }
+    .tile:nth-child(3) .sp-figure { animation-delay: -1.3s; }
+    .tile:nth-child(4) .sp-figure { animation-delay: -0.8s; }
+    .tile:nth-child(5) .sp-figure { animation-delay: -2.1s; }
+    .tile:nth-child(6) .sp-figure { animation-delay: -1.7s; }
     .tile[aria-checked="true"] .name { font-weight: 800; }
     .petrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
     label.check { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px; cursor: pointer; }
@@ -49,7 +50,7 @@
 
   <section id="animal">
     <h2>Your study buddy</h2>
-    <p class="note">Studies along at its little desk on your screen, and keeps you company in the break and summary windows.</p>
+    <p class="note">Stands on your taskbar and studies along, and keeps you company in the break and summary windows.</p>
     <div id="animals" class="tiles" role="radiogroup" aria-label="Your study buddy"></div>
     <div class="petrow">
       <label class="check"><input id="showBubble" type="checkbox"> Show speech bubble</label>

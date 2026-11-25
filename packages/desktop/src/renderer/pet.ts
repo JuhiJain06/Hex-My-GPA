@@ -1,21 +1,21 @@
 import { DEFAULT_SETTINGS, type SoundChoice } from '@study-buddy/core';
-import { sceneSlot } from '@study-buddy/core/buddy/scene';
 import { $, buddy, hm, IPC, onEngine, onState, type UiState } from './api';
 import { liveBuddy } from './buddy/live';
 import { FREQ_PRESETS, SoundEngine, fadeAction, normalizeChoice, shouldBeAudible } from './audio';
 import { extensionStatusText } from '../shared/labels';
-import { PET_MENU_W } from '../shared/layout';
-import { HitSync, NoticeQueue, bubbleText, closeOnBlur, plannedText, shouldShowExtNotice } from '../shared/pet';
+import { PET_ART_H, PET_FOOT_GAP, PET_MENU_W } from '../shared/layout';
+import {
+  HitSync, NoticeQueue, alphaFromRgba, bubbleText, closeOnBlur, plannedText, shouldShowExtNotice, spriteHit, type AlphaMask,
+} from '../shared/pet';
 import type { PetMenuLayout } from '../shared/ipc';
 
 /**
- * The desktop pet: the buddy at its desk, a speech bubble (time left, one-off notices) and a menu
+ * The desktop pet: the buddy standing on the taskbar, a speech bubble (time left, one-off notices) and a menu
  * with the session controls. It replaces the old mini timer, so it also hosts the focus sounds.
- * The window is click-through except over the pet, bubble and menu (see `hitTest`).
+ * The window is click-through except over the pet's painted pixels, bubble and menu (see `hitTest`).
  */
 
 const params = new URLSearchParams(location.search);
-const SCENE_PX = 188;
 /** Pointer travel before a press on the pet counts as a drag instead of a click. */
 const DRAG_SLOP = 4;
 let state: UiState | null = null;
@@ -24,6 +24,9 @@ const btn = (id: string) => $<HTMLButtonElement>(id);
 const petEl = $('pet');
 const bubble = $('bubble');
 const menu = $('menu');
+// The art stands PET_FOOT_GAP above the window's bottom (the taskbar); the bubble sits above its head.
+petEl.style.bottom = `${PET_FOOT_GAP}px`;
+bubble.style.bottom = `${PET_FOOT_GAP + PET_ART_H + 8}px`;
 
 // ---- Speech bubble ----
 const notices = new NoticeQueue();
@@ -90,7 +93,7 @@ onState((s) => {
   render();
   syncAudible();
 });
-liveBuddy(petEl, SCENE_PX, sceneSlot);
+liveBuddy(petEl, PET_ART_H);
 setInterval(render, 250);
 
 btn('extend').addEventListener('click', () => buddy.send(IPC.blockExtend));
@@ -99,7 +102,43 @@ btn('blockingOff').addEventListener('click', () => { void closeMenu(); buddy.sen
 btn('end').addEventListener('click', () => buddy.send(IPC.sessionEnd));
 btn('resume').addEventListener('click', () => buddy.send(IPC.sessionResume));
 
-// ---- Click-through: only the pet's drawing, the bubble and the menu catch the mouse ----
+// ---- Click-through: only the pet's painted pixels, the bubble and the menu catch the mouse ----
+/** Alpha of each pet image, read once per image (null: unreadable, so the inset box is used). */
+const masks = new Map<string, AlphaMask | null>();
+/** Images whose load we already wait for (the mask is read once they have loaded). */
+const waiting = new WeakSet<HTMLImageElement>();
+
+function readMask(img: HTMLImageElement): void {
+  const src = img.currentSrc || img.src;
+  if (masks.has(src) || !img.complete || img.naturalWidth === 0) return;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('no 2d context');
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data; // throws if tainted
+    masks.set(src, { width: canvas.width, height: canvas.height, alpha: alphaFromRgba(data) });
+  } catch (err) {
+    console.warn('pet: image alpha unavailable, using its box', err);
+    masks.set(src, null);
+  }
+}
+
+function onPet(x: number, y: number): boolean {
+  const img = petEl.querySelector<HTMLImageElement>('img.sp-art');
+  if (!img) return false;
+  const src = img.currentSrc || img.src;
+  if (!masks.has(src)) {
+    if (!img.complete) {
+      if (!waiting.has(img)) { waiting.add(img); img.addEventListener('load', () => readMask(img), { once: true }); }
+      return false;
+    }
+    readMask(img);
+  }
+  return spriteHit(img.getBoundingClientRect(), masks.get(src) ?? null, x, y);
+}
 const hits = new HitSync((h) => buddy.send(IPC.petHit, h));
 let dragging = false;
 /** Last pointer spot in the window (null: the pointer is outside). */
@@ -107,11 +146,9 @@ let pointer: { x: number; y: number } | null = null;
 
 function hitTest(x: number, y: number): boolean {
   const el = document.elementFromPoint(x, y);
-  if (!el) return false;
-  if (el.closest('#menu:not(.hidden)') || el.closest('#bubble:not(.hidden)')) return true;
-  const pet = el.closest('#pet');
-  // The scene's own box is transparent: only its painted shapes count.
-  return pet !== null && el !== pet && el !== pet.firstElementChild;
+  if (el && (el.closest('#menu:not(.hidden)') || el.closest('#bubble:not(.hidden)'))) return true;
+  // The pet: its image's own alpha, not its box (the doodles never catch the mouse).
+  return onPet(x, y);
 }
 
 /** Main reset the window to click-through: forget the cached hit and re-check where the pointer is. */

@@ -1,6 +1,6 @@
 import { $, buddy, IPC } from './api';
-import { ANIMALS, type Animal, type Lists, type Settings } from '@study-buddy/core';
-import { drawBuddy } from '@study-buddy/core/buddy/draw';
+import { ANIMALS, toAnimal, type Animal, type Lists, type Settings } from '@study-buddy/core';
+import { petSprite } from '@study-buddy/core/buddy/sprite';
 import type { SettingsSaveResult } from '../shared/ipc';
 
 const LIST_KEYS = ['fine', 'gray', 'hard'] as const;
@@ -28,7 +28,10 @@ for (const a of ANIMALS) {
   const name = document.createElement('span');
   name.className = 'name';
   name.textContent = a.label;
-  tile.append(drawBuddy(a.id, 'wave', 64), name);
+  const pic = document.createElement('span');
+  pic.className = 'pic';
+  pic.appendChild(petSprite(a.id, 'wave', 72));
+  tile.append(pic, name);
   tile.addEventListener('click', () => selectAnimal(a.id));
   tiles.set(a.id, tile);
   $('animals').appendChild(tile);
@@ -46,7 +49,7 @@ $('animals').addEventListener('keydown', (ev) => {
 selectAnimal(animal);
 
 function fill(s: Settings): void {
-  if (ANIMALS.some((a) => a.id === s.animal)) selectAnimal(s.animal);
+  selectAnimal(toAnimal(s.animal));
   for (const k of LIST_KEYS) {
     area('sites', k).value = s.sites[k].join('\n');
     area('apps', k).value = s.apps[k].join('\n');

@@ -1,8 +1,18 @@
 /** Window sizes shared by the main process and the renderers. Pure; no Electron imports. */
 
-/** The desktop pet window (bubble + scene) with its menu closed. */
+/**
+ * The desktop pet window with its menu closed: the pet's art stands at the bottom (its feet
+ * PET_FOOT_GAP above the window's bottom, which sits on the work area's bottom, i.e. the taskbar),
+ * with room for the speech bubble above its head. 200 wide so the widest pets (fox, dog) fit.
+ */
 export const PET_W = 200;
-export const PET_H = 220;
+export const PET_H = 230;
+/** The pet's art height in the pet window (its width follows each image's aspect ratio). */
+export const PET_ART_H = 150;
+/** Gap between the bottom of the pet's feet and the taskbar. */
+export const PET_FOOT_GAP = 6;
+/** Room above the pet's head for the bubble (the planned-length notice with its buttons is the tallest). */
+export const PET_BUBBLE_ROOM = PET_H - PET_ART_H - PET_FOOT_GAP;
 /** The pet's menu beside it (including a small gap). */
 export const PET_MENU_W = 244;
 

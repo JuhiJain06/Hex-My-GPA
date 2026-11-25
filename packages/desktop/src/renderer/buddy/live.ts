@@ -1,16 +1,14 @@
 import { moodFor, type Animal, type Mood } from '@study-buddy/core';
 import { buddy, IPC, onEngine, onState, type UiState } from '../api';
-import { buddySlot } from '@study-buddy/core/buddy/draw';
-
-type Slot = { set(animal: Animal, mood: Mood): void };
+import { spriteSlot } from '@study-buddy/core/buddy/sprite';
 
 /**
  * Shows the study buddy in `host`, following the app: UiState (animal, phase, pause), `buddy:slip`
- * (sad for 3 s) and the planned-length event (celebrate until the next phase change). `makeSlot`
- * picks the drawing: the plain buddy (default) or the pet's study scene.
+ * (sad for 3 s) and the planned-length event (celebrate until the next phase change). `size` is the
+ * art's height in px.
  */
-export function liveBuddy(host: Element, size: number, makeSlot: (host: Element, size: number) => Slot = buddySlot): void {
-  const slot = makeSlot(host, size);
+export function liveBuddy(host: Element, size: number): void {
+  const slot = spriteSlot(host, size);
   let state: UiState | null = null;
   let recentSlipAt: number | null = null;
   let celebrating = false;
@@ -45,7 +43,7 @@ export function liveBuddy(host: Element, size: number, makeSlot: (host: Element,
 
 /** A buddy with a set mood (null: not yet known) whose animal follows the settings (start, summary, overlay). */
 export function staticBuddy(host: Element, size: number, mood: () => Mood | null): { refresh(): void } {
-  const slot = buddySlot(host, size);
+  const slot = spriteSlot(host, size);
   let animal: Animal | null = null;
   const refresh = () => {
     const m = mood();

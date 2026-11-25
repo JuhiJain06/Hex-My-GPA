@@ -1,5 +1,5 @@
 import {
-  ALWAYS_FINE_APPS, isAnimal, type FreqChoice, type Lists, type PetSettings, type Rhythm, type Settings, type SoundChoice,
+  ALWAYS_FINE_APPS, isAnimal, toAnimal, type FreqChoice, type Lists, type PetSettings, type Rhythm, type Settings, type SoundChoice,
 } from '@study-buddy/core';
 
 /** Spec anti-goal: these are never interrupted, whatever the user types. */
@@ -126,10 +126,11 @@ export function parseSettings(input: unknown, current: Settings): Settings | Fai
     if ('error' in s) return s;
     sound = s;
   }
-  let animal = current.animal;
+  // A saved penguin is now the dog; any other unknown saved value the cat.
+  let animal = toAnimal(current.animal);
   if (input.animal !== undefined) {
-    if (!isAnimal(input.animal)) return { error: 'Study buddy: please pick one of the animals.' };
-    animal = input.animal;
+    if (input.animal !== 'penguin' && !isAnimal(input.animal)) return { error: 'Study buddy: please pick one of the animals.' };
+    animal = toAnimal(input.animal);
   }
   let pet = current.pet;
   if (input.pet !== undefined) {

@@ -5,6 +5,7 @@ import {
 import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 import {
   DEFAULT_SETTINGS,
+  toAnimal,
   type BuddyEvent,
   type EngineState,
   type SessionInfo,
@@ -193,7 +194,9 @@ export async function openDb(filePath: string, opts: OpenDbOptions = {}): Promis
   return {
     getSettings() {
       const raw = getSetting('settings');
-      return merge(DEFAULT_SETTINGS, raw ? JSON.parse(raw) : undefined);
+      const s = merge(DEFAULT_SETTINGS, raw ? JSON.parse(raw) : undefined);
+      // A saved penguin is now the dog; an unknown animal the cat.
+      return { ...s, animal: toAnimal(s.animal) };
     },
     saveSettings(s) {
       setSetting('settings', JSON.stringify(s));

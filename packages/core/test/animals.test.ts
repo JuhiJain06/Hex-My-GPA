@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { ANIMALS, isAnimal, moodFor, SAD_MS, type MoodInput } from '../src/index';
+import { ANIMALS, isAnimal, moodFor, SAD_MS, toAnimal, type MoodInput } from '../src/index';
 
 const NOW = 1_000_000;
 const base: MoodInput = { phase: 'idle', paused: false, recentSlipAt: null, celebrating: false, phaseEndsAt: null };
@@ -7,12 +7,23 @@ const mood = (over: Partial<MoodInput>, now = NOW) => moodFor({ ...base, ...over
 
 describe('ANIMALS', () => {
   test('lists the six animals in order, cat first (the default)', () => {
-    expect(ANIMALS.map((a) => a.id)).toEqual(['cat', 'fox', 'panda', 'bunny', 'penguin', 'hamster']);
-    expect(ANIMALS.map((a) => a.label)).toEqual(['Cat', 'Fox', 'Panda', 'Bunny', 'Penguin', 'Hamster']);
+    expect(ANIMALS.map((a) => a.id)).toEqual(['cat', 'fox', 'panda', 'bunny', 'dog', 'hamster']);
+    expect(ANIMALS.map((a) => a.label)).toEqual(['Cat', 'Fox', 'Panda', 'Bunny', 'Dog', 'Hamster']);
   });
   test('isAnimal accepts only known ids', () => {
     expect(isAnimal('fox')).toBe(true);
-    for (const v of ['dog', 'Cat', '', null, undefined, 3]) expect(isAnimal(v)).toBe(false);
+    expect(isAnimal('dog')).toBe(true);
+    for (const v of ['penguin', 'Cat', '', null, undefined, 3]) expect(isAnimal(v)).toBe(false);
+  });
+});
+
+describe('toAnimal (saved values)', () => {
+  test('known animals are kept', () => {
+    for (const a of ANIMALS) expect(toAnimal(a.id)).toBe(a.id);
+  });
+  test('a saved penguin becomes the dog', () => expect(toAnimal('penguin')).toBe('dog'));
+  test('anything unknown falls back to the cat', () => {
+    for (const v of ['dragon', 'Fox', '', null, undefined, 3, {}]) expect(toAnimal(v)).toBe('cat');
   });
 });
 

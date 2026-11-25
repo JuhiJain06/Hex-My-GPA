@@ -3,7 +3,8 @@
 //   dist/watchdog.js    watchdog process (ESM, run by electron.exe as node)
 //   dist/preload.cjs    preload (CJS, as sandboxed preloads require)
 //   dist/renderer/*     one IIFE bundle per renderer + its html + the renderer css (common, pet), plus core's theme
-//                       tokens.css (imported by common.css) and buddy.css
+//                       tokens.css (imported by common.css) and sprite.css
+//   dist/renderer/art/*.png  the buddies' character art (core/buddy/art), unaltered
 import { build } from 'esbuild';
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -39,5 +40,8 @@ await Promise.all([
 const cssFiles = readdirSync(rendererSrc).filter((f) => f.endsWith('.css'));
 for (const f of [...htmlPages, ...cssFiles]) copyFileSync(join(rendererSrc, f), join(rendererOut, f));
 copyFileSync(join(core, 'theme', 'tokens.css'), join(rendererOut, 'tokens.css'));
-copyFileSync(join(core, 'buddy', 'buddy.css'), join(rendererOut, 'buddy.css'));
+copyFileSync(join(core, 'buddy', 'sprite.css'), join(rendererOut, 'sprite.css'));
+const artSrc = join(core, 'buddy', 'art');
+mkdirSync(join(rendererOut, 'art'), { recursive: true });
+for (const f of readdirSync(artSrc).filter((f) => f.endsWith('.png'))) copyFileSync(join(artSrc, f), join(rendererOut, 'art', f));
 console.log(`built main, watchdog, preload and ${htmlPages.length} renderers → dist/`);

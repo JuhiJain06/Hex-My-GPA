@@ -1,5 +1,5 @@
 import type { DesktopToExt } from '@study-buddy/core';
-import { buddySlot } from '@study-buddy/core/buddy/draw';
+import { spriteSlot } from '@study-buddy/core/buddy/sprite';
 import { formatHm, formatTimeLeft, panelMood } from './panelLogic';
 
 type StateMsg = Extract<DesktopToExt, { t: 'state' }>;
@@ -8,7 +8,7 @@ interface PanelUpdate { connected: boolean; state: StateMsg | null }
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 let cur: PanelUpdate = { connected: false, state: null };
 const buddyEl = $('buddy');
-const buddy = buddySlot(buddyEl, 64);
+const buddy = spriteSlot(buddyEl, 64);
 
 function render(): void {
   const { connected, state } = cur;

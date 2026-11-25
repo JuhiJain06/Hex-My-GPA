@@ -15,6 +15,6 @@
   "side_panel": { "default_path": "sidepanel.html" },
   "options_ui": { "page": "options.html", "open_in_tab": true },
   "web_accessible_resources": [
-    { "resources": ["blocked.html", "blocked.js", "tokens.css", "buddy.css"], "matches": ["<all_urls>"] }
+    { "resources": ["blocked.html", "blocked.js", "tokens.css", "sprite.css"], "matches": ["<all_urls>"] }
   ]
 }

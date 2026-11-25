@@ -7,7 +7,7 @@ import { staticBuddy } from './buddy/live';
 /** Focus time that earns a celebration on the summary. */
 const CELEBRATE_MS = 25 * 60_000;
 let mood: Mood | null = null;
-const summaryBuddy = staticBuddy($('buddy'), 110, () => mood);
+const summaryBuddy = staticBuddy($('buddy'), 120, () => mood);
 
 function rows(listId: string, items: [string, string][], emptyText: string): void {
   const ul = $(listId);

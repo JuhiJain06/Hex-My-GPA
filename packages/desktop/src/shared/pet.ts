@@ -128,3 +128,37 @@ export class HitSync {
 export function closeOnBlur(s: { hasFocus: boolean; activeTag: string | null }): boolean {
   return !s.hasFocus && s.activeTag?.toUpperCase() !== 'SELECT';
 }
+
+// ---- Click-through hit-testing against the pet image's own alpha ----
+
+/** A pixel counts as the pet when its alpha is above this (soft edges and stray specks pass through). */
+export const ALPHA_HIT = 40;
+/** Without alpha (a tainted canvas), the image box shrunk by this much on every side counts. */
+export const HIT_INSET = 0.15;
+
+/** The image's alpha channel, one byte per pixel, row by row. */
+export interface AlphaMask { width: number; height: number; alpha: ArrayLike<number> }
+export interface Box { left: number; top: number; width: number; height: number }
+
+/** The alpha bytes out of canvas RGBA pixel data. */
+export function alphaFromRgba(rgba: ArrayLike<number>): Uint8Array {
+  const out = new Uint8Array(Math.floor(rgba.length / 4));
+  for (let i = 0; i < out.length; i++) out[i] = rgba[i * 4 + 3]!;
+  return out;
+}
+
+/**
+ * Is the page point (x, y) on the pet? `box` is where the image is drawn (its client rect).
+ * With a mask: the image pixel under the point has alpha > ALPHA_HIT. Without one: inside the box
+ * minus a HIT_INSET margin. Pure.
+ */
+export function spriteHit(box: Box, mask: AlphaMask | null, x: number, y: number): boolean {
+  if (!(box.width > 0 && box.height > 0)) return false;
+  const u = (x - box.left) / box.width;
+  const v = (y - box.top) / box.height;
+  if (!(u >= 0 && u < 1 && v >= 0 && v < 1)) return false;
+  if (!mask) return u >= HIT_INSET && u <= 1 - HIT_INSET && v >= HIT_INSET && v <= 1 - HIT_INSET;
+  const ix = Math.min(mask.width - 1, Math.floor(u * mask.width));
+  const iy = Math.min(mask.height - 1, Math.floor(v * mask.height));
+  return (mask.alpha[iy * mask.width + ix] ?? 0) > ALPHA_HIT;
+}

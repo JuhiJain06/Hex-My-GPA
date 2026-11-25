@@ -1,4 +1,4 @@
-import { isAnimal, moodFor, type Animal, type ExtToDesktop, type Mood, type Phase } from '@study-buddy/core';
+import { moodFor, toAnimal, type Animal, type ExtToDesktop, type Mood, type Phase } from '@study-buddy/core';
 
 export const MAX_TOPIC = 200;
 
@@ -30,10 +30,10 @@ export function formatHm(ms: number): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
-/** The chosen animal from a stored/pushed state (lastState); the cat when missing or unknown. */
+/** The chosen animal from a stored/pushed state (lastState): penguin is now the dog; the cat when missing or unknown. */
 export function animalOf(state: unknown): Animal {
   const a = typeof state === 'object' && state !== null ? (state as { animal?: unknown }).animal : undefined;
-  return isAnimal(a) ? a : 'cat';
+  return toAnimal(a);
 }
 
 /**

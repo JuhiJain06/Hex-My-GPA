@@ -151,10 +151,17 @@ describe('parseSettings: animal', () => {
     expect(ok(input(), { ...DEFAULT_SETTINGS, animal: 'panda' }).animal).toBe('panda');
     expect(ok(input()).animal).toBe('cat');
   });
-  test.each(['cat', 'fox', 'panda', 'bunny', 'penguin', 'hamster'])('accepts %s', (animal) => {
+  test.each(['cat', 'fox', 'panda', 'bunny', 'dog', 'hamster'])('accepts %s', (animal) => {
     expect(ok(input({ animal })).animal).toBe(animal);
   });
-  test.each([['dog'], ['Fox'], [''], [null], [3], [{}]])('rejects %j', (animal) => {
+  test('a penguin (the old buddy) becomes the dog', () => {
+    expect(ok(input({ animal: 'penguin' })).animal).toBe('dog');
+  });
+  test('a saved penguin as the current value becomes the dog; an unknown saved value the cat', () => {
+    expect(ok(input(), { ...DEFAULT_SETTINGS, animal: 'penguin' as never }).animal).toBe('dog');
+    expect(ok(input(), { ...DEFAULT_SETTINGS, animal: 'dragon' as never }).animal).toBe('cat');
+  });
+  test.each([['dragon'], ['Fox'], [''], [null], [3], [{}]])('rejects %j', (animal) => {
     expect(err(input({ animal }))).toMatch(/buddy/i);
   });
 });
