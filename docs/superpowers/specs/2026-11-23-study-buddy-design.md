@@ -209,3 +209,16 @@ User request: "make it like a cute pet that show up on screen and studies along"
 - **Stacking:** the pet is always-on-top at a normal level, below the block overlay, check-ins and prompts.
 - **Settings:** "Your study buddy" section gains *Show speech bubble* (on by default) and *Reset pet position*.
 - **Calm rule still applies:** the pet never walks around, never makes sounds of its own, never steals focus (the pet window is non-focusable except while its menu is open), and respects reduced-motion.
+
+## Addendum 3 (2026-11-26): The user's own character art
+
+The user rejected the code-drawn styles (pastel chibi, pixel, doodle) and supplied a character sheet to use exactly as drawn ("Use these"; approved the cutout preview and mood plan: "Yes, build it").
+
+- **Animals change to:** Cat (wizard), Fox (fire, lantern), Panda (bamboo ranger), Bunny (hooded cloak), **Dog** (knight, replaces Penguin), Hamster (alchemist). Default: Cat. Saved settings with `penguin` migrate to `dog`.
+- **Art:** the six transparent PNG cutouts in `packages/core/buddy/art/` (cut from `source-sheet.webp` by `cutout.py`) are the pets, unaltered. No code-drawn animals remain in the UI.
+- **Moods:** one pose per pet; moods are shown with small sketch-style doodle overlays and gentle CSS motion around the unchanged art:
+  - wave/idle: a small hop; study: gentle breathe/bob; break: stretch hop + steaming-mug doodle; alert: "!" doodle; sleep: slightly dimmed + floating "z z"; sad (drift, 3 s): sweat-drop doodle + tiny shake; celebrate: hearts + sparkles.
+  - All motion off under reduced-motion (overlays still shown).
+- **Desk scene removed.** The pet stands directly on the taskbar (~150 px tall), speech bubble above, same click menu/drag/click-through as Addendum 2. Click-through hit-testing uses the image's alpha (not the bounding box).
+- **Everywhere the animal appears** (pet window, start, break, summary, overlay, Settings picker, extension blocked page and side panel) uses the same PNGs.
+- **Personal use:** the bunny closely follows a third-party drawing; the app is for the user's own use.

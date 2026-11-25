@@ -840,3 +840,15 @@ test('restore with --restored-by-watchdog logs one app-closed bypass', () => {})
 - [ ] Tests first for the pure helpers; then the window (transparent, frame:false, skipTaskbar, alwaysOnTop normal level, focusable:false, `setIgnoreMouseEvents(true,{forward:true})` toggled by renderer hit-testing on mousemove), drag via IPC with clamping, menu (focusable only while open), migrate sounds + messages + controls from mini, then delete mini.
 - [ ] Verify headless only (render pet.html in headless Edge with a stubbed preload; screenshots of each mood + bubble + menu). NO Electron launch on the user's desktop.
 - [ ] Commit `feat: desktop pet replaces mini window`
+
+### Task 22: Use the user's character art (spec Addendum 3)
+
+**Files:**
+- Assets: `packages/core/buddy/art/{cat,fox,panda,bunny,dog,hamster}.png` (already added)
+- Create: `packages/core/buddy/sprite.ts` (`petSprite(animal, mood, size) → HTMLElement`: img + doodle overlays; DOM APIs only), `packages/core/buddy/sprite.css`
+- Modify: core `animals.ts` (`ANIMALS`: penguin → dog), settings migration (penguin → dog) in parseSettings/db merge, every consumer of `drawBuddy`/`drawStudyScene` (pet, start, break, summary, overlay, settings picker, extension blocked page + side panel), pet window size, pet hit-testing (alpha of the image), both build scripts (copy art PNGs; CSP allows `img-src 'self'`)
+- Delete: `drawBuddy`/`drawStudyScene` code and their tests once unused
+- Test: `sprite.test.ts` (jsdom: each animal × mood renders the right img src + overlay set; no innerHTML), migration test, hit-test helper test (alpha threshold on a small fixture)
+
+- [ ] Tests first; implement; rebuild; headless screenshots of pet in each mood + picker + blocked page (no Electron launch).
+- [ ] Commit `feat: use the user's character art for pets`
