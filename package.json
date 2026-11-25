@@ -5,6 +5,8 @@
     "packages/*"
   ],
   "scripts": {
+    "build": "npm run build -w packages/extension && npm run build -w packages/desktop",
+    "start": "npm run dev -w packages/desktop",
     "test": "npm test --workspaces --if-present"
   },
   "devDependencies": {
