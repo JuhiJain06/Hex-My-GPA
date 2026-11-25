@@ -69,7 +69,7 @@ export const RIGS: Readonly<Record<PictureKey, readonly RigPart[]>> = {
   // ---- Dog (knight): ears above the helmet; the sleeping dog's tail is curled round it.
   dog: [ear([145, 42], [132, 15]), ear([252, 30], [265, 5])],
   'dog-study': [ear([215, 32], [202, 5]), ear([325, 30], [337, 2]), tail([382, 192], [405, 135])],
-  'dog-break': [ear([182, 35], [172, 8]), ear([140, 92], [110, 82]), tail([432, 92], [427, 18])],
+  'dog-break': [ear([182, 35], [172, 8]), ear([140, 92], [110, 82]), tail([455, 100], [460, 25])],
   'dog-sleep': [ear([265, 40], [252, 8]), ear([185, 85], [162, 68])],
 
   // ---- Hamster (alchemist): round ears; no tail to speak of.

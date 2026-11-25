@@ -9,6 +9,7 @@ import {
   ART_SIZE, INK, MOOD_PICTURE, OVERLAYS, STEAM_AT, fitSize, petSprite, pictureFor, spriteSize, spriteSlot, spriteWidth,
 } from '../buddy/sprite';
 import { PICTURE_SIZE, RIGS } from '../buddy/rigs';
+import { DETACHED_FRAMES } from '../buddy/animator';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const combos = ANIMALS.flatMap((a) => MOODS.map((m) => [a.id, m] as [Animal, Mood]));
@@ -379,9 +380,79 @@ describe('the canvas animator', () => {
     f.load();
     f.frames.at(-1)!(100);
     const n = f.frames.length;
+    const off = vi.spyOn(document, 'removeEventListener');
     el.remove();
     f.frames.at(-1)!(200);
     expect(f.frames.length).toBe(n);
+    // It lets go of its listeners (and pixels): showing the page again does not restart it.
+    expect(off).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(f.frames.length).toBe(n);
+  });
+
+  test('a sprite that never goes into the page stops polling after DETACHED_FRAMES', () => {
+    reducedMotion(false);
+    const f = fakeCanvas();
+    const off = vi.spyOn(document, 'removeEventListener');
+    petSprite('cat', 'study', 150); // never attached
+    f.load();
+    expect(f.frames.length).toBe(1);
+    for (let i = 0; i <= DETACHED_FRAMES + 1 && f.frames.length > i; i++) f.frames[i]!(i * 16.7);
+    const n = f.frames.length;
+    expect(n).toBe(DETACHED_FRAMES + 1);
+    expect(off).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(f.frames.length).toBe(n);
+    // Nothing was drawn past the first picture while it waited.
+    const shown = f.ctxs.find((x) => x.putImageData.mock.calls.length > 0)!;
+    expect(shown.putImageData.mock.calls.length).toBe(2);
+  });
+
+  test('a sprite attached a few frames after loading still animates', () => {
+    reducedMotion(false);
+    const f = fakeCanvas();
+    const el = petSprite('cat', 'study', 150);
+    f.load();
+    f.frames.at(-1)!(16);
+    f.frames.at(-1)!(33);
+    document.body.appendChild(el);
+    const shown = f.ctxs.find((x) => x.putImageData.mock.calls.length > 0)!;
+    const before = shown.putImageData.mock.calls.length;
+    f.frames.at(-1)!(100);
+    expect(shown.putImageData.mock.calls.length).toBe(before + 1);
+    el.remove();
+  });
+
+  test('spriteSlot disposes a sprite someone else took out of the host', () => {
+    reducedMotion(false);
+    const f = fakeCanvas();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const slot = spriteSlot(host, 150);
+    slot.set('fox', 'study');
+    f.load();
+    const old = host.querySelector('.sprite')!;
+    host.replaceChildren();
+    const off = vi.spyOn(document, 'removeEventListener');
+    slot.set('fox', 'break');
+    expect(host.querySelector('.sprite')).not.toBe(old);
+    expect(off).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    host.remove();
+  });
+
+  test('doodles are sized for the new picture while it is still loading', () => {
+    reducedMotion(false);
+    const f = fakeCanvas();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const slot = spriteSlot(host, 150, 'art/', { maxWidth: 320 });
+    slot.set('dog', 'study'); // 150 tall
+    f.load();
+    slot.set('dog', 'alert'); // the break scene: 320 x 120; not loaded yet
+    expect(host.querySelector<HTMLElement>('.sprite')!.style.height).toBe('150px');
+    const bang = host.querySelector('.sp-bang')!;
+    expect(bang.getAttribute('height')).toBe(String(Math.round(120 * 0.22)));
+    host.remove();
   });
 });
 

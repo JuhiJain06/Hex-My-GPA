@@ -162,3 +162,33 @@ export function spriteHit(box: Box, mask: AlphaMask | null, x: number, y: number
   const iy = Math.min(mask.height - 1, Math.floor(v * mask.height));
   return (mask.alpha[iy * mask.width + ix] ?? 0) > ALPHA_HIT;
 }
+
+/**
+ * Each picture's alpha mask, loaded once per picture path. `get` answers at once from the cache, or
+ * starts the load and answers `undefined` (not known yet); when a load finishes, `onReady` runs so
+ * the caller can re-test the resting pointer (the first hover over a new picture can't wait for it).
+ */
+export class MaskCache {
+  private readonly masks = new Map<string, AlphaMask | null>();
+  private readonly loading = new Set<string>();
+
+  constructor(
+    /** Loads `key`'s mask and calls `done` once (null: unreadable, so the inset box is used). */
+    private readonly load: (key: string, done: (mask: AlphaMask | null) => void) => void,
+    private readonly onReady: (key: string) => void,
+  ) {}
+
+  /** The mask (null: use the inset box), or undefined while it is still loading. */
+  get(key: string): AlphaMask | null | undefined {
+    if (this.masks.has(key)) return this.masks.get(key)!;
+    if (!this.loading.has(key)) {
+      this.loading.add(key);
+      this.load(key, (mask) => {
+        this.loading.delete(key);
+        this.masks.set(key, mask);
+        this.onReady(key);
+      });
+    }
+    return undefined;
+  }
+}

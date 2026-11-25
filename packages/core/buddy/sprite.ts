@@ -323,7 +323,8 @@ export function setSpriteMood(el: HTMLElement, mood: Mood, animal?: Animal): voi
   el.dataset.mood = mood;
   showPicture(el, st, mood, false);
   for (const d of el.querySelectorAll('.sp-doodle')) d.remove();
-  const h = Number(el.dataset.h) || st.size;
+  // Doodles are sized for the picture this mood shows (the old one may still be up while it loads).
+  const h = fitSize(pictureFor(st.animal, mood).natural, st.size, st.opts.maxWidth)[1];
   el.append(...(OVERLAYS[mood] ?? []).flatMap((k) => doodle(k, h, st.animal) ?? []));
 }
 
@@ -358,6 +359,15 @@ export function petSprite(animal: Animal, mood: Mood, size: number, artBase = 'a
   return el;
 }
 
+/** Stops a sprite's animation for good and drops its listeners and pixels (it keeps its last frame). */
+export function disposeSprite(el: HTMLElement): void {
+  const st = states.get(el);
+  if (!st) return;
+  st.animator?.destroy();
+  st.animator = null;
+  st.want = '';
+}
+
 /**
  * A spot in the page showing one buddy. Mood and animal changes reuse the same sprite and canvas;
  * the picture is swapped once the new one has loaded (no flash).
@@ -371,6 +381,7 @@ export function spriteSlot(host: Element, size: number, artBase = 'art/', opts: 
       if (key === shown) return;
       if (el && host.contains(el)) setSpriteMood(el, mood, animal);
       else {
+        if (el) disposeSprite(el); // taken out of the host by someone else: let its animator go
         el = petSprite(animal, mood, size, artBase, opts);
         host.replaceChildren(el);
       }

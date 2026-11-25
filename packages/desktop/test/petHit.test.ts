@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { ALPHA_HIT, HIT_INSET, alphaFromRgba, spriteHit, type AlphaMask } from '../src/shared/pet';
+import { ALPHA_HIT, HIT_INSET, HitSync, MaskCache, alphaFromRgba, spriteHit, type AlphaMask } from '../src/shared/pet';
 
 /**
  * A 4×3 image:   x=0  x=1  x=2  x=3
@@ -56,5 +56,43 @@ describe('alphaFromRgba', () => {
   test('keeps every 4th byte', () => {
     const rgba = Uint8ClampedArray.from([1, 2, 3, 0, 9, 9, 9, 41, 0, 0, 0, 255]);
     expect([...alphaFromRgba(rgba)]).toEqual([0, 41, 255]);
+  });
+});
+
+describe('MaskCache (a picture swap under a resting pointer)', () => {
+  test('loads each picture once; undefined while loading; onReady when it arrives', () => {
+    const loads: [string, (m: AlphaMask | null) => void][] = [];
+    const ready: string[] = [];
+    const cache = new MaskCache((key, done) => loads.push([key, done]), (key) => ready.push(key));
+    expect(cache.get('art/scenes/dog-break.png')).toBeUndefined();
+    expect(cache.get('art/scenes/dog-break.png')).toBeUndefined();
+    expect(loads).toHaveLength(1);
+    expect(ready).toEqual([]);
+    loads[0]![1](mask);
+    expect(ready).toEqual(['art/scenes/dog-break.png']);
+    expect(cache.get('art/scenes/dog-break.png')).toBe(mask);
+    expect(loads).toHaveLength(1);
+  });
+  test('an unreadable picture is cached as null (the inset box) and still reports ready', () => {
+    const ready: string[] = [];
+    const cache = new MaskCache((_k, done) => done(null), (key) => ready.push(key));
+    expect(cache.get('a.png')).toBeUndefined(); // done() ran synchronously inside get
+    expect(ready).toEqual(['a.png']);
+    expect(cache.get('a.png')).toBeNull();
+  });
+  test('re-testing after a swap reaches main both ways (update), which settled() + update would not', () => {
+    const sent: boolean[] = [];
+    const hits = new HitSync((h) => sent.push(h));
+    hits.update(true); // resting over the standing pose: the window catches clicks
+    // The wider, shorter scene now leaves the pointer over nothing: must turn click-through back on.
+    hits.update(false);
+    expect(sent).toEqual([true, false]);
+    // resyncHit's settled() would have forgotten the "true" and sent nothing, leaving the window catching clicks.
+    const sent2: boolean[] = [];
+    const h2 = new HitSync((h) => sent2.push(h));
+    h2.update(true);
+    h2.settled();
+    h2.update(false);
+    expect(sent2).toEqual([true]);
   });
 });

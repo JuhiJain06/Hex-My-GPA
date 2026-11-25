@@ -3,8 +3,9 @@ import { partsBox, prepareParts, warpFrame, type WarpPart } from './warp';
 
 /**
  * Draws one picture into a `<canvas>` (sized to the image's natural size; CSS scales it) and bends
- * its ears and tail with warp.ts at about 30 fps. The loop pauses while the page is hidden or the
- * canvas has left the page; under prefers-reduced-motion the plain picture is drawn once. Showing a
+ * its ears and tail with warp.ts at about 30 fps. The loop pauses while the page is hidden; once the
+ * canvas has left the page (or never entered it within DETACHED_FRAMES), the animator lets go of its
+ * loop, listeners and pixels. Under prefers-reduced-motion the plain picture is drawn once. Showing a
  * new picture keeps the old frame up until the new image has loaded and its first frame is drawn
  * (no flicker). If the pixels can't be read (a tainted canvas, no 2D context), `onFail` is called so
  * the caller can show a plain `<img>` instead.
@@ -14,6 +15,8 @@ import { partsBox, prepareParts, warpFrame, type WarpPart } from './warp';
 export const FPS = 30;
 const FRAME_MS = 1000 / FPS;
 const REDUCED = '(prefers-reduced-motion: reduce)';
+/** Frames to wait for a canvas that has never been in the page before giving up on it (~2 s at 60 Hz). */
+export const DETACHED_FRAMES = 120;
 
 export interface Animator {
   /**
@@ -21,7 +24,7 @@ export interface Animator {
    * picture's first frame is drawn, in the same task, so the caller can resize around it.
    */
   show(src: string, parts: readonly RigPart[], slow: boolean, onSwap?: (w: number, h: number) => void): void;
-  /** Stops the loop and drops the listeners (the canvas keeps its last frame). */
+  /** Stops the loop for good and drops the listeners and pixels (the canvas keeps its last frame). */
   destroy(): void;
 }
 
@@ -47,6 +50,9 @@ export function createAnimator(canvas: HTMLCanvasElement, onFail: (src: string, 
   /** The canvas has been in the page: leaving it afterwards stops the loop for good (until the next show). */
   let attached = false;
   let dead = false;
+  /** Frames seen while the canvas has not (yet) been in the page. */
+  let waiting = 0;
+  let listening = false;
 
   const reduced = () => mq?.matches === true;
   /** Taken out of the page after being in it (a sprite that was replaced or thrown away). */
@@ -68,9 +74,17 @@ export function createAnimator(canvas: HTMLCanvasElement, onFail: (src: string, 
 
   function tick(ms: number): void {
     raf = 0;
-    if (!moving()) return; // hidden, reduced motion, or removed from the page: stop
+    // Thrown away (removed after being shown), or never put in the page: let go of everything.
+    if (gone()) { release(); return; }
+    if (!canvas.isConnected) {
+      if (++waiting > DETACHED_FRAMES) { release(); return; }
+      raf = requestAnimationFrame(tick);
+      return;
+    }
+    waiting = 0;
+    if (!moving()) return; // hidden or reduced motion: stop (sync() restarts it)
     // About 30 fps on a 60 Hz (or faster) display; a little slack so 60 Hz doesn't drop to 20.
-    if (canvas.isConnected && ms - last >= FRAME_MS - 4) {
+    if (ms - last >= FRAME_MS - 4) {
       last = ms;
       draw(ms);
     }
@@ -91,11 +105,27 @@ export function createAnimator(canvas: HTMLCanvasElement, onFail: (src: string, 
     run();
     if (reduced() && !dead) still();
   }
-  doc.addEventListener('visibilitychange', sync);
-  mq?.addEventListener?.('change', sync);
+  function listen(): void {
+    if (listening) return;
+    listening = true;
+    doc.addEventListener('visibilitychange', sync);
+    mq?.addEventListener?.('change', sync);
+  }
+  /** Stops the loop and drops the listeners and pixels; the canvas keeps its last frame. A later show() starts afresh. */
+  function release(): void {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    cur = null;
+    if (!listening) return;
+    listening = false;
+    doc.removeEventListener('visibilitychange', sync);
+    mq?.removeEventListener?.('change', sync);
+  }
+  listen();
 
   return {
     show(src, parts, slow, onSwap) {
+      if (dead) return;
+      listen();
       const mine = ++ticket;
       const img = new Image();
       img.decoding = 'async';
@@ -132,6 +162,7 @@ export function createAnimator(canvas: HTMLCanvasElement, onFail: (src: string, 
         const prepared = prepareParts(parts, w, h);
         cur = { w, h, src: pixels, out, parts: prepared, slow, box: partsBox(prepared) };
         attached = false;
+        waiting = 0;
         last = -Infinity;
         // The whole new picture first (draw() then repaints only the moving parts).
         still();
@@ -144,9 +175,7 @@ export function createAnimator(canvas: HTMLCanvasElement, onFail: (src: string, 
     destroy() {
       dead = true;
       ticket++;
-      if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      doc.removeEventListener('visibilitychange', sync);
-      mq?.removeEventListener?.('change', sync);
+      release();
     },
   };
 }

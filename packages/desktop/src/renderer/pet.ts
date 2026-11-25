@@ -5,7 +5,7 @@ import { FREQ_PRESETS, SoundEngine, fadeAction, normalizeChoice, shouldBeAudible
 import { extensionStatusText } from '../shared/labels';
 import { bubbleBottom, PET_ART_H, PET_ART_MAX_W, PET_FOOT_GAP, PET_MENU_W, PET_W } from '../shared/layout';
 import {
-  HitSync, NoticeQueue, alphaFromRgba, bubbleText, closeOnBlur, plannedText, shouldShowExtNotice, spriteHit, type AlphaMask,
+  HitSync, MaskCache, NoticeQueue, alphaFromRgba, bubbleText, closeOnBlur, plannedText, shouldShowExtNotice, spriteHit, type AlphaMask,
 } from '../shared/pet';
 import type { PetMenuLayout } from '../shared/ipc';
 
@@ -35,6 +35,7 @@ fitToPicture(PET_ART_H, PET_ART_H);
 petEl.addEventListener('sprite:picture', (e) => {
   const d = (e as CustomEvent<{ width: number; height: number }>).detail;
   fitToPicture(d.width, d.height);
+  recheckHit(); // a different shape (and size) under the resting pointer
 });
 
 // ---- Speech bubble ----
@@ -114,14 +115,17 @@ btn('resume').addEventListener('click', () => buddy.send(IPC.sessionResume));
 // ---- Click-through: only the pet's painted pixels, the bubble and the menu catch the mouse ----
 /**
  * Alpha of each picture, read once per picture from the plain image (null: unreadable, so the inset
- * box is used). The ears and tail move on the canvas, but hit-testing uses the still picture.
+ * box is used). The ears and tail move on the canvas, but hit-testing uses the still picture. When a
+ * mask arrives, the resting pointer is re-tested (nothing else would until the mouse moves).
  */
-const masks = new Map<string, AlphaMask | null>();
-/** The plain images the masks are read from, by the picture's path. */
-const maskImages = new Map<string, HTMLImageElement>();
+const masks = new MaskCache((key, done) => {
+  const img = new Image();
+  img.addEventListener('load', () => done(readMask(img)), { once: true });
+  img.addEventListener('error', () => done(null), { once: true });
+  img.src = key;
+}, () => recheckHit());
 
-function readMask(key: string, img: HTMLImageElement): void {
-  if (masks.has(key) || !img.complete || img.naturalWidth === 0) return;
+function readMask(img: HTMLImageElement): AlphaMask | null {
   try {
     const canvas = document.createElement('canvas');
     canvas.width = img.naturalWidth;
@@ -130,10 +134,10 @@ function readMask(key: string, img: HTMLImageElement): void {
     if (!ctx) throw new Error('no 2d context');
     ctx.drawImage(img, 0, 0);
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data; // throws if tainted
-    masks.set(key, { width: canvas.width, height: canvas.height, alpha: alphaFromRgba(data) });
+    return { width: canvas.width, height: canvas.height, alpha: alphaFromRgba(data) };
   } catch (err) {
     console.warn('pet: image alpha unavailable, using its box', err);
-    masks.set(key, null);
+    return null;
   }
 }
 
@@ -142,19 +146,9 @@ function onPet(x: number, y: number): boolean {
   const art = petEl.querySelector<HTMLElement>('.sp-art');
   const key = art?.dataset.src;
   if (!art || !key) return false;
-  if (!masks.has(key)) {
-    let img = maskImages.get(key);
-    if (!img) {
-      img = new Image();
-      const im = img;
-      im.addEventListener('load', () => readMask(key, im), { once: true });
-      im.src = key;
-      maskImages.set(key, im);
-    }
-    if (!img.complete) return false;
-    readMask(key, img);
-  }
-  return spriteHit(art.getBoundingClientRect(), masks.get(key) ?? null, x, y);
+  const mask = masks.get(key);
+  if (mask === undefined) return false; // still loading: re-tested when it arrives
+  return spriteHit(art.getBoundingClientRect(), mask, x, y);
 }
 const hits = new HitSync((h) => buddy.send(IPC.petHit, h));
 let dragging = false;
@@ -166,6 +160,15 @@ function hitTest(x: number, y: number): boolean {
   if (el && (el.closest('#menu:not(.hidden)') || el.closest('#bubble:not(.hidden)'))) return true;
   // The pet: its image's own alpha, not its box (the doodles never catch the mouse).
   return onPet(x, y);
+}
+
+/**
+ * The pet changed under a resting pointer (a new picture, or its mask arrived): re-test and tell main
+ * if the answer changed. Unlike resyncHit this keeps the cached hit, because main has not reset the
+ * window: going from "over the pet" to "over nothing" must still be sent.
+ */
+function recheckHit(): void {
+  if (pointer && !dragging) hits.update(hitTest(pointer.x, pointer.y));
 }
 
 /** Main reset the window to click-through: forget the cached hit and re-check where the pointer is. */
