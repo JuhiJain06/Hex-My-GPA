@@ -852,3 +852,15 @@ test('restore with --restored-by-watchdog logs one app-closed bypass', () => {})
 
 - [ ] Tests first; implement; rebuild; headless screenshots of pet in each mood + picker + blocked page (no Electron launch).
 - [ ] Commit `feat: use the user's character art for pets`
+
+### Task 23: Mood scenes + ear/tail rigs for all six pets (spec Addendum 4)
+
+**Files:**
+- Assets (added): `packages/core/buddy/art/scenes/*.png` (18), `art/sheets/*.webp`, `art/cut-scenes.py`, `art/warp-prototype.js` (working preview of the warp + fox/bunny rigs — port it, don't invent a different algorithm)
+- Create: `packages/core/buddy/rigs.ts` (rig data for 18 scenes + 6 standing poses, image-pixel coordinates), `packages/core/buddy/warp.ts` (pure `warpFrame(src, dst, w, h, parts, t, opts)` on RGBA arrays + `partAngle(part, t, slow)`), `packages/core/buddy/animator.ts` (canvas + rAF wrapper, pause when hidden, reduced-motion aware)
+- Modify: `sprite.ts`/`sprite.css` (mood → scene/standing image mapping, steam/sparkle/z doodles), pet window sizing (~150 tall, ≤320 wide), every placement already using `petSprite`, both builds (copy scenes/)
+- Test: `warp.test.ts` (zero angle = identity; pixel at base never moves; pixel near tip moves by ≈ angle·distance; outside capsule untouched; out-of-bounds sample → transparent), `rigs.test.ts` (every scene/pose has a rig entry; all points inside image bounds; ears/tails non-degenerate), sprite mapping tests
+
+- [ ] Annotate rigs for cat, dog, panda, hamster (fox/bunny given in the prototype, keep the fixed fox-sleep/bunny-sleep values) by drawing base→tip markers over each image in headless Edge and checking screenshots; record the check screenshots.
+- [ ] Tests first; implement; headless screenshots/frames of each pet in each mood (two frames per rigged scene to show motion).
+- [ ] Commit `feat: mood scenes with ear and tail motion`

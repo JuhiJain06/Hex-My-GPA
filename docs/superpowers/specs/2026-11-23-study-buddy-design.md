@@ -222,3 +222,15 @@ The user rejected the code-drawn styles (pastel chibi, pixel, doodle) and suppli
 - **Desk scene removed.** The pet stands directly on the taskbar (~150 px tall), speech bubble above, same click menu/drag/click-through as Addendum 2. Click-through hit-testing uses the image's alpha (not the bounding box).
 - **Everywhere the animal appears** (pet window, start, break, summary, overlay, Settings picker, extension blocked page and side panel) uses the same PNGs.
 - **Personal use:** the bunny closely follows a third-party drawing; the app is for the user's own use.
+
+## Addendum 4 (2026-11-26): Mood scenes with ear and tail motion
+
+The user supplied a studying / on break / asleep (away) sheet for each pet ("use these add a little animation in each like a movement"), approved the animated preview, asked that fox and bunny ears not be clipped, and asked for ear and tail movement on **all six pets** ("Yes, all six pets").
+
+- **Scenes:** 18 transparent PNGs in `packages/core/buddy/art/scenes/{animal}-{study|break|sleep}.png` (cut from `art/sheets/*.webp` by `art/cut-scenes.py`), shown unaltered apart from motion.
+- **Mood → picture:** study → `-study` scene; break → `-break` scene (+ "!" doodle in alert/last minute and awaitingNext); sleep (paused/away) → `-sleep` scene; sad (drift, 3 s) → `-study` scene with sweat-drop doodle + tiny shake; wave (idle/start) and celebrate → the standing pose from Addendum 3 (+ hearts/sparkles for celebrate).
+- **Whole-picture motion (CSS):** study = slow breathing; break = gentle sway; sleep = deeper slower breathing + floating "z" doodles that rise and fade; study also has a few twinkling sparkles; break has rising steam wisps.
+- **Part motion (ears and tails):** each scene and standing pose has a small rig of parts (ear/tail: base point → tip point). Parts bend with a smooth inverse-mapped rotation about the base with weight rising toward the tip and soft radial falloff (no duplicated pixels). Ears: small sway plus an occasional quick twitch, parts slightly out of phase; tails: slow swish. Asleep: much smaller and slower, no twitch. Pets where a part is hidden (e.g. a curled-under tail) simply have no rig for it.
+- **Reduced motion:** all whole-picture and part motion off; doodles still shown statically.
+- **Performance:** part warp only touches each part's bounding box, ~30 fps, and pauses when the pet window is hidden.
+- **Size:** scenes are wider than standing poses; on the taskbar the pet is ~150 px tall and up to ~320 px wide; click-through still uses the picture's alpha.
