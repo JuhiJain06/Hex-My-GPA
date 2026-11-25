@@ -349,7 +349,7 @@ describe('AppGuard gating (I3, I6)', () => {
     start();
     guard.onForeground(fg('spotify.exe'));
     expect(promptUp()).toBe(true);
-    guard.onForeground(fg('electron.exe', OWN)); // clicking the prompt / mini keeps it
+    guard.onForeground(fg('electron.exe', OWN)); // clicking the prompt / pet keeps it
     runTo(T0 + 5 * S);
     expect(promptUp()).toBe(true);
     guard.onForeground(fg('code.exe'));

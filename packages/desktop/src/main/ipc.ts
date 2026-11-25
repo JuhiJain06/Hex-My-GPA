@@ -1,7 +1,7 @@
-import { ipcMain, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
+import { ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron';
 import type { Db } from './db';
 import type { SessionController } from './controller';
-import { closeBySender, getWindow, showWindow } from './windows';
+import { closeBySender, showWindow } from './windows';
 import { parseCheckinAnswer } from './checkins';
 import { parseOfferAnswer, parsePromptAnswer } from './appGuard';
 import { summarize } from '@study-buddy/core';
@@ -11,7 +11,6 @@ import { parseSettings, parseSound } from './settingsValidate';
 import { parseStart } from './startRequest';
 
 export { parseStart };
-import { clampHeight, MINI_H, MINI_MAX_H, MINI_W } from '../shared/layout';
 import { IPC, type HistoryView, type OfferAnswerMsg, type SettingsSaveResult, type SummaryView, type WindowName } from '../shared/ipc';
 
 const DAY_MS = 86_400_000;
@@ -40,10 +39,12 @@ export interface IpcDeps {
   /** Focus-sound mute flag (not persisted); toggle also broadcasts it. */
   isMuted(): boolean;
   toggleMute(): void;
+  /** Settings → "Reset pet position". */
+  resetPetPosition(): void;
 }
 
 /** Windows a renderer may open by name. */
-const OPENABLE: readonly WindowName[] = ['start', 'mini', 'bypass', 'history', 'settings'];
+const OPENABLE: readonly WindowName[] = ['start', 'bypass', 'history', 'settings'];
 
 const fromUs = (e: IpcMainEvent | IpcMainInvokeEvent): boolean => (e.senderFrame?.url ?? '').startsWith('file:');
 
@@ -135,15 +136,7 @@ export function registerIpc(deps: IpcDeps): void {
     if (r) deps.onOfferAnswer(r.exe, r.choice);
   });
   on(IPC.soundMute, () => deps.toggleMute());
-  on(IPC.miniResize, (p, e) => {
-    if (typeof p !== 'number' || !Number.isFinite(p)) return;
-    const mini = getWindow('mini');
-    if (mini && mini.webContents.id === e.sender.id) {
-      const [w] = mini.getContentSize();
-      const h = Math.min(MINI_MAX_H, Math.max(MINI_H, p));
-      mini.setContentSize(w ?? MINI_W, Math.round(clampHeight(h, screen.getPrimaryDisplay().workArea.height)));
-    }
-  });
+  on(IPC.petResetPos, () => deps.resetPetPosition());
   on(IPC.overlayDismiss, () => deps.dismissOverlay());
   on(IPC.windowOpen, (p) => {
     if (typeof p === 'string' && (OPENABLE as readonly string[]).includes(p)) showWindow(p as WindowName, { focus: true });

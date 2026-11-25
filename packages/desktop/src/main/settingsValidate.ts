@@ -1,4 +1,6 @@
-import { ALWAYS_FINE_APPS, isAnimal, type FreqChoice, type Lists, type Rhythm, type Settings, type SoundChoice } from '@study-buddy/core';
+import {
+  ALWAYS_FINE_APPS, isAnimal, type FreqChoice, type Lists, type PetSettings, type Rhythm, type Settings, type SoundChoice,
+} from '@study-buddy/core';
 
 /** Spec anti-goal: these are never interrupted, whatever the user types. */
 export const ALWAYS_FINE_SITES: readonly string[] = ['claude.ai', 'notebooklm.google.com', 'gemini.google.com'];
@@ -89,6 +91,25 @@ export function parseSound(raw: unknown): SoundChoice | Fail {
   return { ambient: raw.ambient as SoundChoice['ambient'], ambientVolume: raw.ambientVolume, freq, freqVolume: raw.freqVolume };
 }
 
+/** The pet block: each missing field keeps its current value; a position needs finite numbers. */
+export function parsePet(raw: unknown, current: PetSettings): PetSettings | Fail {
+  const bad = { error: 'Study buddy: the pet settings are invalid.' };
+  if (!isObj(raw)) return bad;
+  let showBubble = current.showBubble;
+  if (raw.showBubble !== undefined) {
+    if (typeof raw.showBubble !== 'boolean') return bad;
+    showBubble = raw.showBubble;
+  }
+  let pos = current.pos;
+  if (raw.pos !== undefined) {
+    if (raw.pos === null) pos = null;
+    else if (isObj(raw.pos) && isNum(raw.pos.x) && isNum(raw.pos.y) && isNum(raw.pos.displayId)) {
+      pos = { x: raw.pos.x, y: raw.pos.y, displayId: raw.pos.displayId };
+    } else return bad;
+  }
+  return { showBubble, pos };
+}
+
 /** Validates and normalizes a settings payload from the Settings window. Pure. */
 export function parseSettings(input: unknown, current: Settings): Settings | Fail {
   if (!isObj(input)) return { error: 'Settings are invalid.' };
@@ -110,6 +131,12 @@ export function parseSettings(input: unknown, current: Settings): Settings | Fai
     if (!isAnimal(input.animal)) return { error: 'Study buddy: please pick one of the animals.' };
     animal = input.animal;
   }
+  let pet = current.pet;
+  if (input.pet !== undefined) {
+    const p = parsePet(input.pet, current.pet);
+    if ('error' in p) return p;
+    pet = p;
+  }
   const always = new Set(ALWAYS_FINE_SITES);
   const protectedSite = (d: string) => ALWAYS_FINE_SITES.some((p) => d === p || d.endsWith('.' + p));
   sites.fine = [...ALWAYS_FINE_SITES, ...sites.fine.filter((d) => !always.has(d))];
@@ -119,5 +146,5 @@ export function parseSettings(input: unknown, current: Settings): Settings | Fai
   apps.fine = [...ALWAYS_FINE_APPS, ...apps.fine.filter((e) => !alwaysApp.has(e))];
   apps.gray = apps.gray.filter((e) => !alwaysApp.has(e));
   apps.hard = apps.hard.filter((e) => !alwaysApp.has(e));
-  return { rhythm, streakMinMinutes: input.streakMinMinutes, sites, apps, sound, animal };
+  return { rhythm, streakMinMinutes: input.streakMinMinutes, sites, apps, sound, animal, pet };
 }

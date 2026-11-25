@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
-import { clampHeight, MINI_H, MINI_MAX_H, SCREEN_MARGIN, stackBounds, type StackSlot } from '../src/shared/layout';
+import { clampHeight, PET_H, PET_W, SCREEN_MARGIN, stackBounds, type StackSlot } from '../src/shared/layout';
 import { createClickArming } from '../src/shared/arming';
 import { loggingGuardUi, type GuardUi } from '../src/main/appGuard';
 
@@ -15,8 +15,11 @@ describe('clampHeight', () => {
   test('never below 100 px', () => {
     expect(clampHeight(700, 50)).toBe(100);
   });
-  test('mini sizes are sane', () => {
-    expect(MINI_H).toBeLessThan(MINI_MAX_H);
+  test('the pet window is small (about 200 x 220)', () => {
+    expect(PET_W).toBeGreaterThanOrEqual(180);
+    expect(PET_W).toBeLessThanOrEqual(220);
+    expect(PET_H).toBeGreaterThanOrEqual(200);
+    expect(PET_H).toBeLessThanOrEqual(240);
   });
 });
 

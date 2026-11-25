@@ -26,6 +26,20 @@ export interface Lists {
   hard: string[];
 }
 
+/** Where the desktop pet sits: top-left of the pet in screen DIPs, and the display it was left on. */
+export interface PetPos {
+  x: number;
+  y: number;
+  displayId: number;
+}
+
+export interface PetSettings {
+  /** Show the speech bubble (timer, notices) above the pet. The pet itself always shows in a session. */
+  showBubble: boolean;
+  /** Last dragged-to spot; null: the default spot (bottom-right of the primary display). */
+  pos: PetPos | null;
+}
+
 export interface Settings {
   rhythm: Rhythm;
   streakMinMinutes: number;
@@ -34,6 +48,8 @@ export interface Settings {
   sound: SoundChoice;
   /** The study buddy shown in the windows (and the extension). */
   animal: Animal;
+  /** The desktop pet window. */
+  pet: PetSettings;
 }
 
 export const BROWSER_EXES: string[] = [
@@ -75,4 +91,5 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   sound: { ambient: 'none', ambientVolume: 0.5, freq: null, freqVolume: 0.3 },
   animal: 'cat',
+  pet: { showBubble: true, pos: null },
 };

@@ -159,6 +159,33 @@ describe('parseSettings: animal', () => {
   });
 });
 
+describe('parseSettings: pet', () => {
+  const pos = { x: 1500, y: 800, displayId: 2779098405 };
+  const cur = { ...DEFAULT_SETTINGS, pet: { showBubble: false, pos } };
+  test('defaults: bubble on, no saved position', () => {
+    expect(DEFAULT_SETTINGS.pet).toEqual({ showBubble: true, pos: null });
+    expect(ok(input()).pet).toEqual({ showBubble: true, pos: null });
+  });
+  test('missing pet keeps the current value', () => expect(ok(input(), cur).pet).toEqual(cur.pet));
+  test('missing pos keeps the current position (the settings window only sends showBubble)', () => {
+    expect(ok(input({ pet: { showBubble: true } }), cur).pet).toEqual({ showBubble: true, pos });
+  });
+  test('missing showBubble keeps the current flag', () => {
+    expect(ok(input({ pet: { pos: null } }), cur).pet).toEqual({ showBubble: false, pos: null });
+  });
+  test('accepts a position and null', () => {
+    expect(ok(input({ pet: { showBubble: true, pos: { x: -1920, y: 10.5, displayId: 3 } } })).pet.pos).toEqual({ x: -1920, y: 10.5, displayId: 3 });
+    expect(ok(input({ pet: { showBubble: true, pos: null } }), cur).pet.pos).toBeNull();
+  });
+  test('drops extra keys from the position', () => {
+    expect(ok(input({ pet: { pos: { x: 1, y: 2, displayId: 3, evil: 'x' } } })).pet.pos).toEqual({ x: 1, y: 2, displayId: 3 });
+  });
+  test.each([
+    [null], ['x'], [[]], [{ showBubble: 'yes' }], [{ pos: 5 }], [{ pos: { x: 1, y: 2 } }],
+    [{ pos: { x: NaN, y: 2, displayId: 1 } }], [{ pos: { x: 1, y: Infinity, displayId: 1 } }], [{ pos: { x: 1, y: 2, displayId: '1' } }],
+  ])('rejects %j', (pet) => expect(err(input({ pet }))).toMatch(/pet|buddy/i));
+});
+
 describe('parseSettings: protected apps (I6)', () => {
   test('claude.exe is always on the fine list and stripped from gray and hard', () => {
     const s = ok(apps(['claude.exe', 'steam.exe'], ['claude.exe', 'spotify.exe']));

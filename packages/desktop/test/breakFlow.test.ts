@@ -5,7 +5,7 @@ import type { UiState } from '../src/shared/ipc';
 
 const ui = (over: Partial<UiState>): UiState => ({
   phase: 'break', topic: 'Maths', phaseEndsAt: null, pausedSince: null, todayMs: 0, streakDays: 0,
-  blockingActive: false, extensionConnected: false, bridgeListening: true, suggestion: 'Drink water', animal: 'cat', ...over,
+  blockingActive: false, extensionConnected: false, bridgeListening: true, suggestion: 'Drink water', animal: 'cat', showBubble: true, ...over,
 });
 
 describe('breakWindowAction (main)', () => {

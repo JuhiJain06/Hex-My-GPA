@@ -107,7 +107,7 @@ export interface EngineDebug {
 
 type FreqNode = OscillatorNode | ChannelMergerNode | GainNode;
 
-/** Only the mini window creates a SoundEngine: it is the sole audio host and lives for the whole session. */
+/** Only the pet window creates a SoundEngine: it is the sole audio host and lives for the whole session. */
 export class SoundEngine {
   private readonly fadeGain: GainNode;
   private readonly muteGain: GainNode;

@@ -9,7 +9,7 @@
 
   /* Surfaces */
   --bg: #fdf7ef;          /* cream page */
-  --card: #fffdf9;        /* raised cards, popovers, the mini window */
+  --card: #fffdf9;        /* raised cards, popovers, the pet bubble and menu */
   --panel: #f7ece1;       /* buttons and inputs */
   --line: #ecdccb;        /* borders, dividers */
   --overlay: rgba(253, 247, 239, 0.96); /* full-screen block overlay */

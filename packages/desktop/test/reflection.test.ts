@@ -35,7 +35,7 @@ describe('bypassLabel', () => {
   });
 });
 
-describe('extensionStatusText (I5: mini window browser-link line)', () => {
+describe('extensionStatusText (I5: browser-link line, now in the pet bubble and menu)', () => {
   test('port in use beats "not connected"; connected shows nothing', () => {
     expect(extensionStatusText({ bridgeListening: false, extensionConnected: false })).toBe('Browser link unavailable (port in use) — websites aren\'t being watched');
     expect(extensionStatusText({ bridgeListening: true, extensionConnected: false })).toBe('Browser buddy not connected — websites aren\'t being watched');

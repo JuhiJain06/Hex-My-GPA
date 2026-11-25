@@ -34,8 +34,18 @@ export const IPC = {
   soundMute: 'sound:mute',
   /** R→M: persist the chosen SoundChoice to settings.sound (validated in main). Replies SettingsSaveResult. */
   soundSave: 'sound:save',
-  /** R→M: the mini window asks for a taller/shorter height (px) while the sound popover is open. */
-  miniResize: 'mini:resize',
+  /** R→M (pet only): the pointer is over / off the pet, bubble or menu ({@link boolean}); main toggles click-through. */
+  petHit: 'pet:hit',
+  /** R→M (pet only): drag by `{dx, dy}` screen px (finite, each ≤ 5000); main moves and clamps the window. */
+  petDrag: 'pet:drag',
+  /** R→M (pet only): the drag ended; main saves the position to settings.pet.pos. */
+  petDragEnd: 'pet:dragEnd',
+  /** R→M invoke (pet only): where a menu of `{width, height}` would open ({@link PetMenuLayout}); no side effects. */
+  petLayout: 'pet:layout',
+  /** R→M invoke (pet only): `{open: true, width, height}` grows the window and makes it focusable; `{open: false}` undoes it. */
+  petMenu: 'pet:menu',
+  /** R→M (settings): "Reset pet position": clear settings.pet.pos and move an open pet to the default spot. */
+  petResetPos: 'pet:resetPos',
   windowOpen: 'window:open',
   windowClose: 'window:close',
   /** M→R broadcast of UiState; also `invoke('state')` returns the current UiState. */
@@ -64,6 +74,8 @@ export interface UiState {
   suggestion: string | null;
   /** The study buddy chosen in Settings. */
   animal: Animal;
+  /** Settings → "Show speech bubble" (the desktop pet's bubble). */
+  showBubble: boolean;
 }
 
 /** Payload of `session:start`. */
@@ -72,6 +84,12 @@ export interface StartRequest {
   mode: Mode;
   goal: string | null;
   plannedMin: number | null;
+}
+
+/** Reply of `pet:layout` / `pet:menu`: which side the menu opens on, and which edge the window grows from. */
+export interface PetMenuLayout {
+  side: 'left' | 'right';
+  anchor: 'top' | 'bottom';
 }
 
 /** Payload of `checkin:answer`. */
@@ -104,7 +122,7 @@ export interface HistoryView {
 
 /** Every window main can show (renderers may open only the `OPENABLE` subset). Later tasks add names here. */
 export type WindowName =
-  | 'start' | 'mini' | 'break' | 'checkin' | 'overlay' | 'prompt' | 'offer' | 'bypass' | 'history' | 'settings'
+  | 'start' | 'pet' | 'break' | 'checkin' | 'overlay' | 'prompt' | 'offer' | 'bypass' | 'history' | 'settings'
   | 'reflection' | 'summary';
 
 export type EngineEventMsg = EngineEvent;

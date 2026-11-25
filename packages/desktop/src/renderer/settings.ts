@@ -53,6 +53,7 @@ function fill(s: Settings): void {
   }
   for (const f of NUM_FIELDS) num(f).value = String(s.rhythm[f]);
   num('streakMin').value = String(s.streakMinMinutes);
+  $<HTMLInputElement>('showBubble').checked = s.pet?.showBubble !== false;
 }
 
 const lines = (text: string): string[] => text.split(/\r?\n/);
@@ -71,6 +72,8 @@ function collect(): unknown {
     sites: readLists('sites'),
     apps: readLists('apps'),
     animal,
+    // Only the bubble flag: the pet's position is kept as it is (Reset clears it right away).
+    pet: { showBubble: $<HTMLInputElement>('showBubble').checked },
   };
 }
 
@@ -106,6 +109,10 @@ async function copyCode(): Promise<void> {
 $('save').addEventListener('click', () => void save());
 $('cancel').addEventListener('click', () => buddy.send(IPC.windowClose));
 $('copy').addEventListener('click', () => void copyCode());
+$('resetPet').addEventListener('click', () => {
+  buddy.send(IPC.petResetPos);
+  $('resetMsg').textContent = 'Your buddy is back in the bottom-right corner.';
+});
 
 void buddy.invoke<Settings>(IPC.settingsGet)
   .then(fill)

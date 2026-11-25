@@ -376,6 +376,12 @@ export function drawBuddy(animal: Animal, mood: Mood, size: number, opts: DrawOp
   return svg;
 }
 
+/** The animal's arm color and outline (for paws drawn outside the buddy, e.g. folded on the study desk). */
+export function limbColors(animal: Animal): { fill: string; line: string } {
+  const look = LOOKS[animal] ?? LOOKS.cat;
+  return { fill: look.limb ?? look.fur, line: look.line };
+}
+
 /** A spot in the page that shows one buddy and redraws only when the animal or mood changes. */
 export function buddySlot(host: Element, size: number): { set(animal: Animal, mood: Mood): void } {
   let key = '';

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Study buddy</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="buddy.css">
+  <link rel="stylesheet" href="pet.css">
+</head>
+<body class="side-right anchor-bottom">
+  <div id="petBox">
+    <div id="bubble" class="bubble hidden" role="status" aria-live="polite">
+      <div id="bubbleText"></div>
+      <div id="bubbleBtns" class="bubble-btns hidden">
+        <button id="plannedEnd" type="button">End session</button>
+        <button id="plannedKeep" type="button" class="primary">Keep going</button>
+      </div>
+    </div>
+    <div id="pet" title="Click for the menu, drag to move"></div>
+  </div>
+
+  <div id="menu" class="card hidden" role="dialog" aria-label="Study buddy menu">
+    <div class="mtop"><span id="topic"></span><span id="label"></span></div>
+    <div class="stats"><span>Today <b id="today">0m</b></span><span>Streak <b id="streak">0</b>d</span></div>
+    <div id="ext" class="ext hidden"></div>
+    <div class="btns">
+      <button id="extend" type="button" title="Add 10 minutes to this block">+10 min</button>
+      <button id="endBlock" type="button">End block</button>
+      <button id="blockingOff" type="button" title="Type a sentence to turn off blocking until the next block">Turn off blocking</button>
+      <button id="soundBtn" type="button" title="Focus sounds (Ctrl+Alt+M mutes)" aria-expanded="false">&#9834; Sound&hellip;</button>
+    </div>
+    <button id="end" type="button" class="wide">End session</button>
+
+    <div id="soundPanel" class="hidden">
+      <div class="row">
+        <select id="ambient" aria-label="Ambient sound">
+          <option value="none">Ambient: None</option><option value="rain">Rain</option><option value="brown">Brown noise</option>
+        </select>
+        <input id="ambientVol" type="range" min="0" max="1" step="0.05" aria-label="Ambient volume">
+      </div>
+      <div class="row">
+        <select id="freq" aria-label="Frequency preset"><option value="">Frequency: None</option></select>
+        <input id="freqVol" type="range" min="0" max="1" step="0.05" aria-label="Frequency volume">
+      </div>
+      <div class="row"><button id="muteBtn" type="button" title="Same as Ctrl+Alt+M">Mute</button></div>
+      <div class="note">Binaural beats need headphones. Research on them is mixed — use what helps you.</div>
+    </div>
+  </div>
+  <script src="pet.js"></script>
+</body>
+</html>

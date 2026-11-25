@@ -189,7 +189,7 @@ export class SessionController extends EventEmitter {
     this.emitUi();
   }
 
-  /** False when the extension bridge could not listen (port in use): shown in the mini window. */
+  /** False when the extension bridge could not listen (port in use): shown by the pet. */
   setBridgeListening(ok: boolean): void {
     if (ok === this.bridgeOk) return;
     this.bridgeOk = ok;
@@ -203,10 +203,12 @@ export class SessionController extends EventEmitter {
     const today = localDay(now);
     let streakMin = 120;
     let animal: Animal = 'cat';
+    let showBubble = true;
     try {
       const settings = this.db.getSettings();
       streakMin = settings.streakMinMinutes;
       if (isAnimal(settings.animal)) animal = settings.animal;
+      showBubble = settings.pet?.showBubble !== false;
     } catch { /* keep defaults */ }
     const phase: Phase = s.phase;
     return {
@@ -221,6 +223,7 @@ export class SessionController extends EventEmitter {
       bridgeListening: this.bridgeOk,
       suggestion: phase === 'break' || phase === 'awaitingNext' ? this.suggestion : null,
       animal,
+      showBubble,
     };
   }
 

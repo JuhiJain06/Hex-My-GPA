@@ -294,6 +294,12 @@ describe('SessionController: study buddy', () => {
     db.saveSettings({ ...db.getSettings(), animal: 'dragon' as never });
     expect(c.uiState().animal).toBe('cat');
   });
+  test('uiState carries the speech-bubble setting (on by default)', () => {
+    const c = new SessionController(db, clock);
+    expect(c.uiState().showBubble).toBe(true);
+    db.saveSettings({ ...db.getSettings(), pet: { showBubble: false, pos: null } });
+    expect(c.uiState().showBubble).toBe(false);
+  });
   test('refreshUi re-emits the ui state (settings saved)', () => {
     const c = new SessionController(db, clock);
     const uis: UiState[] = [];

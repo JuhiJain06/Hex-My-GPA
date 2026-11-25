@@ -15,7 +15,8 @@ import { broadcast, closeWindow, showWindow } from './windows';
 import { breakWindowAction } from './breakFlow';
 import { registerIpc } from './ipc';
 import { parseStart } from './startRequest';
-import { scheduleMiniClose } from './endFlow';
+import { schedulePetClose } from './endFlow';
+import { createPetWindow } from './petWindow';
 import { createTray } from './tray';
 import { bindMuteHotkey, unbindAllHotkeys } from './hotkeys';
 import { IPC } from '../shared/ipc';
@@ -78,15 +79,17 @@ async function main(): Promise<void> {
     disarmWatchdog();
   });
 
-  /** Mini window query: phone reminder on a fresh start, planned length for the prompt. */
-  const miniQuery = (fresh: boolean): Record<string, string> => {
+  const pet = createPetWindow({ getSettings: () => db.getSettings(), saveSettings: (s) => db.saveSettings(s), log });
+
+  /** Pet window query: phone reminder on a fresh start, planned length for the prompt. */
+  const petQuery = (fresh: boolean): Record<string, string> => {
     const planned = ctrl.engine.state.session?.plannedMin;
     return { ...(fresh ? PHONE_REMINDER : {}), ...(planned ? { planned: String(planned) } : {}) };
   };
 
   const showSessionWindows = (fresh: boolean) => {
     closeWindow('start');
-    showWindow('mini', { query: miniQuery(fresh) });
+    pet.show({ query: petQuery(fresh) });
     const phase = ctrl.engine.state.phase;
     if (phase === 'break' || phase === 'awaitingNext') showWindow('break');
   };
@@ -112,8 +115,8 @@ async function main(): Promise<void> {
     const id = ctrl.end();
     log('session ended', id);
     disarmWatchdog();
-    // The mini window hosts the audio: let the sessionEnded fade-out play before closing it.
-    scheduleMiniClose(() => closeWindow('mini'), () => ctrl.sessionId !== null);
+    // The pet window hosts the audio: let the sessionEnded fade-out play before closing it.
+    schedulePetClose(() => closeWindow('pet'), () => ctrl.sessionId !== null);
     closeWindow('break');
     tray.refresh();
     showReflection(id);
@@ -206,7 +209,7 @@ async function main(): Promise<void> {
     if (action === 'show') showWindow('break');
     else if (action === 'showFocused') showWindow('break', { focus: true });
     else if (action === 'close') closeWindow('break');
-    if (e.type === 'plannedLengthReached') showWindow('mini');
+    if (e.type === 'plannedLengthReached') pet.show();
   }
 
   let soundMuted = false;
@@ -239,6 +242,7 @@ async function main(): Promise<void> {
     },
     dismissOverlay: () => { log('overlay dismissed'); guard.dismissOverlay(); },
     onSettingsSaved: () => { log('settings saved'); ctrl.refreshUi(); },
+    resetPetPosition: () => pet.resetPosition(),
     onBlockingOff: () => {
       log('blocking turned off by sentence');
       closeWindow('bypass');

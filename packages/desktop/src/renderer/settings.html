@@ -35,6 +35,9 @@
     .tile:nth-child(5) .b-eyes--open { animation-delay: -3.2s; }
     .tile:nth-child(6) .b-eyes--open { animation-delay: -2.6s; }
     .tile[aria-checked="true"] .name { font-weight: 800; }
+    .petrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+    label.check { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 13px; cursor: pointer; }
+    label.check input { width: auto; margin: 0; accent-color: var(--accent-text); }
     footer { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px;
       padding: 12px 24px; background: var(--card); border-top: 1px solid var(--line); box-shadow: var(--shadow); }
     #error { flex: 1; color: var(--danger); font-size: 13px; min-height: 18px; }
@@ -46,8 +49,13 @@
 
   <section id="animal">
     <h2>Your study buddy</h2>
-    <p class="note">Keeps you company in the timer, break and summary windows.</p>
+    <p class="note">Studies along at its little desk on your screen, and keeps you company in the break and summary windows.</p>
     <div id="animals" class="tiles" role="radiogroup" aria-label="Your study buddy"></div>
+    <div class="petrow">
+      <label class="check"><input id="showBubble" type="checkbox"> Show speech bubble</label>
+      <button id="resetPet" type="button" title="Move the pet back to the bottom-right corner">Reset pet position</button>
+    </div>
+    <p id="resetMsg" class="note" role="status"></p>
   </section>
 
   <section id="sites">
@@ -89,7 +97,7 @@
 
   <section id="sound">
     <h2>Sound</h2>
-    <p class="note">Sound is configured from the mini window.</p>
+    <p class="note">Sound is set from the pet's menu: click your study buddy, then Sound&hellip;</p>
   </section>
 
   <section id="pairing">

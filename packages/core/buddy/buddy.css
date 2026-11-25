@@ -45,6 +45,53 @@
 .buddy .b-steam { transform-origin: 50% 100%; animation: b-steam 2.6s ease-in-out infinite; }
 @keyframes b-steam { 0%, 100% { opacity: 0.35; transform: translateY(0); } 50% { opacity: 0.9; transform: translateY(-2px); } }
 
+/* ---- The desktop pet's study scene (scene.ts): gentle loops, never fast or flashy. ---- */
+.scene { display: block; overflow: visible; flex: none; }
+.scene .s-page-turn, .scene .s-pencil, .scene .s-steam, .scene .s-stretch, .scene .s-arms-rest,
+.scene .s-rig .b-arm, .scene .s-buddy { transform-box: fill-box; }
+
+/* Now and then a page turns over the spine (the page's left edge). */
+.scene .s-page-turn { transform-origin: 0% 50%; opacity: 0; animation: s-page-turn 11s ease-in-out infinite; }
+@keyframes s-page-turn {
+  0%, 82% { transform: scaleX(1); opacity: 0; }
+  84% { transform: scaleX(1); opacity: 1; }
+  92% { transform: scaleX(-1); opacity: 1; }
+  95%, 100% { transform: scaleX(-1); opacity: 0; }
+}
+/* The pencil writes: a small wiggle about its tip, with pauses. */
+.scene .s-pencil { transform-origin: 0% 100%; animation: s-pencil 3.4s ease-in-out infinite; }
+@keyframes s-pencil {
+  0%, 40%, 100% { transform: rotate(0deg) translateX(0); }
+  48% { transform: rotate(-5deg) translateX(-0.6px); }
+  56% { transform: rotate(3deg) translateX(0.4px); }
+  64% { transform: rotate(-4deg) translateX(-0.8px); }
+  72% { transform: rotate(2deg) translateX(0); }
+}
+/* Steam drifts up from the mug. */
+.scene .s-steam { transform-origin: 50% 100%; animation: s-steam 3.2s ease-in-out infinite; }
+@keyframes s-steam { 0%, 100% { opacity: 0.3; transform: translateY(1px); } 50% { opacity: 0.85; transform: translateY(-1.5px); } }
+/* Break: a big stretch (paws up, buddy rises a little), then it settles with its paws on the desk. */
+.scene .s-stretch { opacity: 0; animation: s-stretch 3.4s ease-in-out 0.3s 1 both; }
+@keyframes s-stretch {
+  0% { opacity: 0; transform: translateY(6px); }
+  18%, 72% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(6px); }
+}
+.scene .s-arms-rest { animation: s-relax 3.4s ease-in-out 0.3s 1 both; }
+@keyframes s-relax { 0%, 72% { opacity: 0; } 100% { opacity: 1; } }
+.scene--break .s-buddy { animation: s-rise 3.4s ease-in-out 0.3s 1 both; }
+@keyframes s-rise { 0%, 100% { transform: translateY(0); } 20%, 70% { transform: translateY(-3px); } }
+/* Dozing: the lamp dims; z's come from the buddy. */
+.scene .s-lamp--dim .s-glow { opacity: 0.2; }
+
+/* Reduced motion: the scene holds still (the stretch is skipped: it's already relaxed). */
+.scene--still, .scene--still * { animation: none !important; }
+.scene--still .s-stretch, .scene--still .s-page-turn { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .scene, .scene * { animation: none !important; }
+  .scene .s-stretch, .scene .s-page-turn { display: none; }
+}
+
 /* Reduced motion (system setting, or a still buddy): static poses, everything visible. */
 .buddy--still, .buddy--still * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {

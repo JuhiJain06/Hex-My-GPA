@@ -97,6 +97,15 @@ describe('db', () => {
     expect(s.sites.hard).toEqual(['foo.com']);
     expect(s.sites.fine).toEqual(DEFAULT_SETTINGS.sites.fine);
     expect(s.apps).toEqual(DEFAULT_SETTINGS.apps);
+    expect(s.pet).toEqual({ showBubble: true, pos: null }); // old installs get the pet defaults
+  });
+  test('a saved pet position survives a reload, and null clears it', async () => {
+    const db = await openDb(file);
+    const pos = { x: 1700, y: 800, displayId: 7 };
+    db.saveSettings({ ...db.getSettings(), pet: { showBubble: false, pos } });
+    expect((await openDb(file)).getSettings().pet).toEqual({ showBubble: false, pos });
+    db.saveSettings({ ...db.getSettings(), pet: { showBubble: false, pos: null } });
+    expect((await openDb(file)).getSettings().pet).toEqual({ showBubble: false, pos: null });
   });
 
   test('persist retries rename on transient EBUSY then succeeds', async () => {

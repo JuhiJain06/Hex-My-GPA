@@ -1,11 +1,10 @@
-/** Window sizes shared by the main process and the mini renderer. Pure; no Electron imports. */
+/** Window sizes shared by the main process and the renderers. Pure; no Electron imports. */
 
-/** The mini timer: wide enough for two rows of two labelled buttons. */
-export const MINI_W = 280;
-/** Collapsed mini height (sound panel closed). */
-export const MINI_H = 180;
-/** Tallest the mini grows with the sound panel open (before the screen clamp). */
-export const MINI_MAX_H = 420;
+/** The desktop pet window (bubble + scene) with its menu closed. */
+export const PET_W = 200;
+export const PET_H = 220;
+/** The pet's menu beside it (including a small gap). */
+export const PET_MENU_W = 244;
 
 /** Space kept free below a window's height on the primary display's work area. */
 export const SCREEN_MARGIN = 40;

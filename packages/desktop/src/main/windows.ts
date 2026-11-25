@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseTokens } from '@study-buddy/core/theme/tokens';
 import type { Channel, WindowName } from '../shared/ipc';
-import { clampHeight, MINI_H, MINI_W } from '../shared/layout';
+import { clampHeight } from '../shared/layout';
 import { debug } from './config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -16,8 +16,6 @@ export interface WindowSpec {
   /** Show without stealing focus. */
   inactive?: boolean;
 }
-
-const MARGIN = 16;
 
 /** The theme's page background per scheme (from the tokens.css next to the renderers), so no white flash. */
 const pageBg = (() => {
@@ -42,19 +40,7 @@ defineWindow('start', {
   options: () => ({ width: 420, height: 630, resizable: false, title: 'Study Buddy' }),
 });
 
-defineWindow('mini', {
-  html: 'mini',
-  inactive: true,
-  options: () => {
-    const wa = screen.getPrimaryDisplay().workArea;
-    return {
-      width: MINI_W, height: MINI_H,
-      x: wa.x + wa.width - MINI_W - MARGIN, y: wa.y + MARGIN,
-      frame: false, resizable: false, alwaysOnTop: true, skipTaskbar: true,
-      minimizable: false, maximizable: false, fullscreenable: false,
-    };
-  },
-});
+// The desktop pet ('pet') is defined by petWindow.ts: its spot comes from settings.
 
 defineWindow('break', {
   html: 'break',
@@ -95,7 +81,7 @@ const promptOptions = (): BrowserWindowConstructorOptions => ({
 defineWindow('prompt', { html: 'prompt', inactive: true, options: promptOptions });
 defineWindow('offer', { html: 'prompt', inactive: true, options: promptOptions });
 
-// The bypass sentence: small, focused, above other windows so it can't get lost behind the mini.
+// The bypass sentence: small, focused, above other windows so it can't get lost behind the pet.
 defineWindow('bypass', {
   html: 'bypass',
   options: () => ({
