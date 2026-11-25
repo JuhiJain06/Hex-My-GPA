@@ -67,8 +67,12 @@ export function createPetWindow(deps: PetDeps): PetWindow {
     if (w.isDestroyed()) return;
     menuOpen = false;
     w.setBounds(petRect());
+    // Hand the keyboard back (Esc leaves focus in the now non-focusable pet otherwise).
+    if (w.isFocused()) w.blur();
     w.setFocusable(false);
     w.setIgnoreMouseEvents(true, { forward: true });
+    // The renderer caches the last hit it sent; tell it to forget it and re-check the hover.
+    w.webContents.send(IPC.petResync);
   };
 
   const persist = () => {

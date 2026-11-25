@@ -46,6 +46,8 @@ export const IPC = {
   petMenu: 'pet:menu',
   /** R→M (settings): "Reset pet position": clear settings.pet.pos and move an open pet to the default spot. */
   petResetPos: 'pet:resetPos',
+  /** M→R (pet only): main reset the window to click-through (menu closed, re-clamped, reset); re-check the hover. */
+  petResync: 'pet:resync',
   windowOpen: 'window:open',
   windowClose: 'window:close',
   /** M→R broadcast of UiState; also `invoke('state')` returns the current UiState. */

@@ -8,7 +8,7 @@ describe('preload allow-list after the pet replaced the mini window', () => {
   });
   test('the pet channels are exactly these', () => {
     expect(CHANNELS.filter((c) => c.startsWith('pet:')).sort()).toEqual(
-      ['pet:drag', 'pet:dragEnd', 'pet:hit', 'pet:layout', 'pet:menu', 'pet:resetPos'].sort());
+      ['pet:drag', 'pet:dragEnd', 'pet:hit', 'pet:layout', 'pet:menu', 'pet:resetPos', 'pet:resync'].sort());
     expect(IPC.petDrag).toBe('pet:drag');
   });
   test('channel names are unique', () => expect(new Set(CHANNELS).size).toBe(CHANNELS.length));

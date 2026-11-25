@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { NoticeQueue, TRANSIENT_MS, bubbleText, plannedText, shouldShowExtNotice } from '../src/shared/pet';
+import { HitSync, NoticeQueue, TRANSIENT_MS, bubbleText, closeOnBlur, plannedText, shouldShowExtNotice } from '../src/shared/pet';
 
 const NOW = 1_000_000;
 const ui = (over: Record<string, unknown> = {}) => ({
@@ -92,4 +92,41 @@ describe('NoticeQueue', () => {
     expect(q.current(NOW + 5)?.text).toBe('two');
     expect(q.current(NOW + 5 + TRANSIENT_MS)).toBeNull();
   });
+});
+
+describe('HitSync (click-through cache resyncs after main settles the window)', () => {
+  test('sends only changes', () => {
+    const sent: boolean[] = [];
+    const h = new HitSync((v) => sent.push(v));
+    h.update(false);
+    h.update(true);
+    h.update(true);
+    h.update(false);
+    expect(sent).toEqual([true, false]);
+  });
+  test('after the menu closes over the pet (main set ignore=true), the next hover re-sends true', () => {
+    const sent: boolean[] = [];
+    const h = new HitSync((v) => sent.push(v));
+    h.update(true); // over the pet: catch the mouse
+    h.settled(); // main's settle(): ignore=true again, the renderer's cache must forget "true"
+    h.update(true);
+    expect(sent).toEqual([true, true]);
+  });
+  test('settled() with the pointer away sends nothing extra', () => {
+    const sent: boolean[] = [];
+    const h = new HitSync((v) => sent.push(v));
+    h.settled();
+    h.update(false);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe('closeOnBlur (native <select> popups must not close the menu)', () => {
+  test('a real blur closes', () => expect(closeOnBlur({ hasFocus: false, activeTag: 'BUTTON' })).toBe(true));
+  test('still focused (the blur came from a popup): stays open', () => expect(closeOnBlur({ hasFocus: true, activeTag: 'BUTTON' })).toBe(false));
+  test('a select is active: stays open', () => {
+    expect(closeOnBlur({ hasFocus: false, activeTag: 'SELECT' })).toBe(false);
+    expect(closeOnBlur({ hasFocus: false, activeTag: 'select' })).toBe(false);
+  });
+  test('nothing active: closes', () => expect(closeOnBlur({ hasFocus: false, activeTag: null })).toBe(true));
 });

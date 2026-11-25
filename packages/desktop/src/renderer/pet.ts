@@ -5,7 +5,7 @@ import { liveBuddy } from './buddy/live';
 import { FREQ_PRESETS, SoundEngine, fadeAction, normalizeChoice, shouldBeAudible } from './audio';
 import { extensionStatusText } from '../shared/labels';
 import { PET_MENU_W } from '../shared/layout';
-import { NoticeQueue, bubbleText, plannedText, shouldShowExtNotice } from '../shared/pet';
+import { HitSync, NoticeQueue, bubbleText, closeOnBlur, plannedText, shouldShowExtNotice } from '../shared/pet';
 import type { PetMenuLayout } from '../shared/ipc';
 
 /**
@@ -70,6 +70,11 @@ function renderMenu(): void {
   btn('extend').disabled = s.phase !== 'focus';
   btn('endBlock').disabled = s.phase !== 'focus';
   btn('blockingOff').disabled = !s.blockingActive;
+  const paused = s.phase === 'focus' && s.pausedSince !== null;
+  if ($('resume').classList.contains('hidden') === paused) {
+    $('resume').classList.toggle('hidden', !paused);
+    if (menuOpen) void placeMenu(); // the menu changed height
+  }
 }
 
 function render(): void {
@@ -92,10 +97,13 @@ btn('extend').addEventListener('click', () => buddy.send(IPC.blockExtend));
 btn('endBlock').addEventListener('click', () => buddy.send(IPC.blockEndEarly));
 btn('blockingOff').addEventListener('click', () => { void closeMenu(); buddy.send(IPC.windowOpen, 'bypass'); });
 btn('end').addEventListener('click', () => buddy.send(IPC.sessionEnd));
+btn('resume').addEventListener('click', () => buddy.send(IPC.sessionResume));
 
 // ---- Click-through: only the pet's drawing, the bubble and the menu catch the mouse ----
-let hit = false;
+const hits = new HitSync((h) => buddy.send(IPC.petHit, h));
 let dragging = false;
+/** Last pointer spot in the window (null: the pointer is outside). */
+let pointer: { x: number; y: number } | null = null;
 
 function hitTest(x: number, y: number): boolean {
   const el = document.elementFromPoint(x, y);
@@ -106,13 +114,17 @@ function hitTest(x: number, y: number): boolean {
   return pet !== null && el !== pet && el !== pet.firstElementChild;
 }
 
-function setHit(h: boolean): void {
-  if (h === hit) return;
-  hit = h;
-  buddy.send(IPC.petHit, h);
+/** Main reset the window to click-through: forget the cached hit and re-check where the pointer is. */
+function resyncHit(): void {
+  hits.settled();
+  if (pointer && !dragging) hits.update(hitTest(pointer.x, pointer.y));
 }
-document.addEventListener('mousemove', (e) => { if (!dragging) setHit(hitTest(e.clientX, e.clientY)); });
-document.documentElement.addEventListener('mouseleave', () => { if (!dragging) setHit(false); });
+document.addEventListener('mousemove', (e) => {
+  pointer = { x: e.clientX, y: e.clientY };
+  if (!dragging) hits.update(hitTest(e.clientX, e.clientY));
+});
+document.documentElement.addEventListener('mouseleave', () => { pointer = null; if (!dragging) hits.update(false); });
+buddy.on(IPC.petResync, () => resyncHit());
 
 // ---- Drag (pointer deltas to main, which moves and clamps the window) or click (menu) ----
 let press: { id: number; x: number; y: number; lastX: number; lastY: number } | null = null;
@@ -176,7 +188,8 @@ async function openMenu(): Promise<void> {
   try { await placeMenu(); } catch (err) { console.warn('pet menu failed', err); }
   if (!menuOpen) return; // closed while opening
   menu.classList.remove('measuring');
-  btn('extend').disabled ? btn('end').focus() : btn('extend').focus();
+  const first = !$('resume').classList.contains('hidden') ? btn('resume') : btn('extend').disabled ? btn('end') : btn('extend');
+  first.focus();
 }
 
 async function closeMenu(): Promise<void> {
@@ -186,10 +199,16 @@ async function closeMenu(): Promise<void> {
   $('soundPanel').classList.add('hidden');
   btn('soundBtn').setAttribute('aria-expanded', 'false');
   try { await buddy.invoke(IPC.petMenu, { open: false }); } catch (err) { console.warn('pet menu close failed', err); }
+  resyncHit(); // main's settle() made the window click-through again
 }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') void closeMenu(); });
-window.addEventListener('blur', () => void closeMenu());
+// A native <select> popup can blur the window: wait a tick, then close only on a real blur.
+window.addEventListener('blur', () => {
+  setTimeout(() => {
+    if (closeOnBlur({ hasFocus: document.hasFocus(), activeTag: document.activeElement?.tagName ?? null })) void closeMenu();
+  }, 0);
+});
 
 btn('soundBtn').addEventListener('click', () => {
   const open = $('soundPanel').classList.toggle('hidden') === false;

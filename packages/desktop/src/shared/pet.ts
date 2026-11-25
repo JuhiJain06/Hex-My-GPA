@@ -99,3 +99,32 @@ export class NoticeQueue {
     if (wasHead) this.headSince = null;
   }
 }
+
+/**
+ * The renderer's view of main's click-through flag. It sends `pet:hit` only on changes, so whenever
+ * main resets the window to click-through (settle: menu closed, re-clamp, reset) the renderer must
+ * call `settled()` to forget its cached "true"; the next hover over the pet then re-sends it.
+ */
+export class HitSync {
+  private hit = false;
+  constructor(private readonly send: (hit: boolean) => void) {}
+
+  update(h: boolean): void {
+    if (h === this.hit) return;
+    this.hit = h;
+    this.send(h);
+  }
+
+  /** Main just set ignore=true (the window passes clicks through again). */
+  settled(): void {
+    this.hit = false;
+  }
+}
+
+/**
+ * Close the menu on window blur? Not when the document still has focus or a <select> is active:
+ * a native select popup can blur the window while the user is picking a sound.
+ */
+export function closeOnBlur(s: { hasFocus: boolean; activeTag: string | null }): boolean {
+  return !s.hasFocus && s.activeTag?.toUpperCase() !== 'SELECT';
+}
