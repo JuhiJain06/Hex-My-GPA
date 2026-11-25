@@ -3,7 +3,9 @@ import type { Lists, Phase } from '@study-buddy/core';
 type Rule = chrome.declarativeNetRequest.Rule;
 
 const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
-const SHORTS_REGEX = '^https?://([a-z0-9-]+\\.)*youtube\\.com/shorts/';
+/** Whole-URL regexes: `\\0` in the substitution must be the complete original URL. */
+const SHORTS_REGEX = '^https?://([a-z0-9-]+\\.)*youtube\\.com/shorts/[^#]*';
+const ANY_URL_REGEX = '^https?://[^#]*';
 
 function clean(list: string[]): string[] {
   const out: string[] = [];
@@ -14,16 +16,20 @@ function clean(list: string[]): string[] {
   return out;
 }
 
-function blockedPath(site: string, untilMs: number | null): string {
+/**
+ * The blocked page URL; the original URL rides in the fragment (`#\\0`) so the page can offer
+ * "Continue to <site>" once blocking is off.
+ */
+function blockedUrl(base: string, site: string, untilMs: number | null): string {
   const q = `site=${encodeURIComponent(site)}` + (untilMs === null ? '' : `&until=${untilMs}`);
-  return `/blocked.html?${q}`;
+  return `${base}?${q}#\\0`;
 }
 
-function redirectRule(id: number, condition: chrome.declarativeNetRequest.RuleCondition, path: string): Rule {
+function redirectRule(id: number, condition: chrome.declarativeNetRequest.RuleCondition, url: string): Rule {
   return {
     id,
     priority: 1,
-    action: { type: 'redirect', redirect: { extensionPath: path } },
+    action: { type: 'redirect', redirect: { regexSubstitution: url } },
     condition: { ...condition, resourceTypes: ['main_frame'] },
   };
 }
@@ -33,21 +39,22 @@ function redirectRule(id: number, condition: chrome.declarativeNetRequest.RuleCo
  * hard site (subdomains included), plus one for YouTube Shorts when youtube.com is gray.
  * Fine/gray entries that are subdomains of a hard site are excluded from its rule, matching
  * classifySite's most-specific-entry-wins behaviour. Ids are deterministic, starting at 1.
- * `extId` is accepted per the interface but unused: `extensionPath` already targets this extension.
+ * `blockedBase` is the full URL of blocked.html (chrome.runtime.getURL): a regexSubstitution redirect
+ * needs an absolute URL, and it carries the original URL along in the fragment.
  */
-export function buildBlockRules(sites: Lists, untilMs: number | null, _extId: string): Rule[] {
+export function buildBlockRules(sites: Lists, untilMs: number | null, blockedBase: string): Rule[] {
   const hard = clean(sites.hard);
   const softer = clean([...sites.fine, ...sites.gray]);
   const rules: Rule[] = [];
   for (const site of hard) {
     const excluded = softer.filter((d) => d.endsWith('.' + site));
-    const condition: chrome.declarativeNetRequest.RuleCondition = { requestDomains: [site] };
+    const condition: chrome.declarativeNetRequest.RuleCondition = { regexFilter: ANY_URL_REGEX, requestDomains: [site] };
     if (excluded.length > 0) condition.excludedRequestDomains = excluded;
-    rules.push(redirectRule(rules.length + 1, condition, blockedPath(site, untilMs)));
+    rules.push(redirectRule(rules.length + 1, condition, blockedUrl(blockedBase, site, untilMs)));
   }
   const youtubeHard = hard.some((d) => d === 'youtube.com');
   if (clean(sites.gray).includes('youtube.com') && !youtubeHard) {
-    rules.push(redirectRule(rules.length + 1, { regexFilter: SHORTS_REGEX }, blockedPath('youtube.com/shorts', untilMs)));
+    rules.push(redirectRule(rules.length + 1, { regexFilter: SHORTS_REGEX }, blockedUrl(blockedBase, 'youtube.com/shorts', untilMs)));
   }
   return rules;
 }

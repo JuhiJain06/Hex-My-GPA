@@ -1,5 +1,7 @@
 import { expect, test } from 'vitest';
-import { blockedMessage, browserKind, windowReports, isPairingCode, REPORTED_WINDOW_TYPES } from '../src/util';
+import {
+  blockedMessage, browserKind, continueUrl, windowReports, isPairingCode, REPORTED_WINDOW_TYPES, shouldForwardSlip,
+} from '../src/util';
 
 test('blocked message shows the break time in local HH:MM (TZ Asia/Kolkata)', () => {
   // 2023-11-14T22:13:20Z = 03:43:20 IST next day
@@ -38,4 +40,23 @@ test('pairing code is trimmed lowercase hex', () => {
 
 test('window reports cover every window type the extension can see (popups, app windows, DevTools), not only normal ones', () => {
   expect([...REPORTED_WINDOW_TYPES].sort()).toEqual(['app', 'devtools', 'normal', 'popup']);
+});
+
+test('I3: continueUrl takes the original http(s) URL from the blocked page fragment, nothing else', () => {
+  expect(continueUrl('#https://www.instagram.com/p/abc?x=1&y=2')).toBe('https://www.instagram.com/p/abc?x=1&y=2');
+  expect(continueUrl('#http://x.com/')).toBe('http://x.com/');
+  expect(continueUrl('#javascript:alert(1)')).toBeNull();
+  expect(continueUrl('#chrome://settings')).toBeNull();
+  expect(continueUrl('#not a url')).toBeNull();
+  expect(continueUrl('')).toBeNull();
+});
+
+test('I3: slips are forwarded only when connected, blocking, and from a tab top frame', () => {
+  const tab = { tab: { id: 1 }, frameId: 0 };
+  expect(shouldForwardSlip({ blocking: true }, true, tab)).toBe(true);
+  expect(shouldForwardSlip({ blocking: false }, true, tab)).toBe(false); // reload during a break
+  expect(shouldForwardSlip(null, true, tab)).toBe(false);
+  expect(shouldForwardSlip({ blocking: true }, false, tab)).toBe(false);
+  expect(shouldForwardSlip({ blocking: true }, true, { tab: { id: 1 }, frameId: 3 })).toBe(false);
+  expect(shouldForwardSlip({ blocking: true }, true, { frameId: 0 })).toBe(false);
 });

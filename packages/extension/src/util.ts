@@ -36,3 +36,27 @@ export function windowReports(windows: chrome.windows.Window[]): WindowReport[] 
 export function isPairingCode(s: string): boolean {
   return /^[0-9a-f]+$/i.test(s);
 }
+
+/** "Continue to <site>": the original URL from the blocked page's fragment, only if it is http(s). */
+export function continueUrl(hash: string): string | null {
+  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a page's slip goes to the desktop: only while connected, only while the last state says
+ * blocking (a reload or session restore of the blocked page in a break is not a slip), and only
+ * from a tab's top frame.
+ */
+export function shouldForwardSlip(
+  last: { blocking: boolean } | null,
+  connected: boolean,
+  sender: { tab?: unknown; frameId?: number },
+): boolean {
+  return connected && !!last?.blocking && sender.tab !== undefined && sender.frameId === 0;
+}

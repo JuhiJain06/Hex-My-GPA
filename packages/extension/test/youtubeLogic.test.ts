@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, test, vi } from 'vitest';
 import {
+  canAsk,
   HIDE_CSS, REMINDER_MS, StudyPrompt, isShorts, reminderText, mountPromptCard, parseYtMessage, setHideCss, videoIdOf, ytStateFor,
 } from '../src/youtubeLogic';
 
@@ -264,4 +265,10 @@ test('prompt only asks and times out while the tab is visible', () => {
   expect(() => p.answer(true)).toThrow();
   // onVisibility with nothing pending is a no-op
   expect(p.onVisibility()).toBe('none');
+});
+
+test('I2: the study ask waits while a video is fullscreen (the card would be hidden) as well as while the tab is hidden', () => {
+  expect(canAsk({ visibilityState: 'visible', fullscreenElement: null })).toBe(true);
+  expect(canAsk({ visibilityState: 'visible', fullscreenElement: {} as Element })).toBe(false);
+  expect(canAsk({ visibilityState: 'hidden', fullscreenElement: null })).toBe(false);
 });

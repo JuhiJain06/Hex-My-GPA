@@ -6,7 +6,7 @@ import { createConnector } from './connector';
 import { parseDesktopMessage } from './messages';
 import { parsePanelStart } from './panelLogic';
 import { backoffMs, buildBlockRules, sameRules, shouldBlockOffline } from './rules';
-import { REPORTED_WINDOW_TYPES, browserKind, windowReports } from './util';
+import { REPORTED_WINDOW_TYPES, browserKind, shouldForwardSlip, windowReports } from './util';
 import { parseYtMessage, ytStateFor } from './youtubeLogic';
 
 type StateMsg = Extract<DesktopToExt, { t: 'state' }>;
@@ -63,7 +63,13 @@ function setRules(rules: Rule[]): Promise<void> {
 }
 
 const rulesFor = (s: StateMsg): Rule[] =>
-  s.blocking ? buildBlockRules(s.sites, s.phaseEndsAt, chrome.runtime.id) : [];
+  s.blocking ? buildBlockRules(s.sites, s.phaseEndsAt, chrome.runtime.getURL('/blocked.html')) : [];
+
+/** Sends a page's slip only while connected and blocking, and only from a tab's top frame. */
+async function forwardSlip(out: ExtToDesktop, sender: chrome.runtime.MessageSender): Promise<void> {
+  if (!shouldForwardSlip(await loadLastState(), helloed, sender)) return;
+  send(out);
+}
 
 /** While disconnected: keep blocking only inside the last known blocking focus block. */
 async function applyOffline(): Promise<void> {
@@ -275,7 +281,8 @@ chrome.runtime.onMessage.addListener((msg: PageMessage, sender, reply) => {
   if (yt === 'yt-slip' || yt === 'yt-study') {
     // From the YouTube content script; validated, then forwarded if connected, else dropped.
     const out = parseYtMessage(msg, sender);
-    if (out) send(out);
+    if (out?.t === 'slip') void forwardSlip(out, sender);
+    else if (out) send(out);
     return false;
   }
   if (yt === 'panel-start') {
@@ -285,9 +292,9 @@ chrome.runtime.onMessage.addListener((msg: PageMessage, sender, reply) => {
     return false;
   }
   if (msg?.t === 'slip') {
-    // Only the blocked page reports slips, and only of this kind. Dropped if disconnected.
+    // Only the blocked page reports slips, and only of this kind. Dropped if disconnected or not blocking.
     if (typeof msg.target === 'string' && sender.url?.startsWith(chrome.runtime.getURL('/blocked.html'))) {
-      send({ t: 'slip', reason: 'hard-block-visit', target: msg.target.slice(0, 500) });
+      void forwardSlip({ t: 'slip', reason: 'hard-block-visit', target: msg.target.slice(0, 500) }, sender);
     }
     return false;
   }

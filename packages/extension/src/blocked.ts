@@ -1,6 +1,6 @@
 import { drawBuddy } from '@study-buddy/core/buddy/draw';
 import { animalOf } from './panelLogic';
-import { blockedMessage } from './util';
+import { blockedMessage, continueUrl } from './util';
 
 const params = new URLSearchParams(location.search);
 const site = params.get('site') ?? '';
@@ -19,7 +19,22 @@ void chrome.storage.local.get('lastState').then(({ lastState }) => {
   }
 });
 
-// One hard-block-visit slip per page load; the background forwards it if connected, else drops it.
+// "Continue to <site>" once blocking is off (break, turn-off sentence, session ended): a reload or
+// restored tab must not leave the user stuck on this page.
+const original = continueUrl(location.hash);
+const cont = document.getElementById('continue') as HTMLAnchorElement;
+if (original) cont.href = original;
+cont.textContent = `Continue to ${site || 'the site'}`;
+const showContinue = (state: unknown): void => {
+  const blocking = (state as { blocking?: unknown } | undefined)?.blocking === true;
+  cont.hidden = blocking || !original;
+};
+void chrome.storage.local.get('lastState').then(({ lastState }) => showContinue(lastState));
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && 'lastState' in changes) showContinue(changes.lastState.newValue);
+});
+
+// One hard-block-visit slip per page load; the background forwards it only if connected and blocking.
 if (site) void chrome.runtime.sendMessage({ t: 'slip', target: site }).catch(() => {});
 
 document.getElementById('back')!.addEventListener('click', () => {

@@ -19,6 +19,7 @@
   #topic { color: var(--text); font-weight: 600; }
   button { margin-top: 1.25rem; font: inherit; font-weight: 700; padding: .5rem 1.5rem; border-radius: var(--radius-sm);
            border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); cursor: pointer; box-shadow: var(--shadow-sm); }
+  #continue { color: var(--accent-text); font-weight: 600; }
   button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
   @media (max-width: 480px) { h1 { text-align: center; } }
 </style>
@@ -32,6 +33,7 @@
   <p id="site"></p>
   <p id="topic" hidden></p>
   <button id="back" type="button">Back</button>
+  <p><a id="continue" hidden></a></p>
 </main>
 <script src="blocked.js"></script>
 </body>

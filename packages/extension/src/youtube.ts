@@ -2,15 +2,16 @@
 // State {blocking, topic, studyVideos} arrives from the background over a `yt` port; the port is
 // re-opened whenever it drops (service-worker restart), and the background re-sends on connect.
 import {
-  StudyPrompt, isShorts, mountPromptCard, setHideCss, videoIdOf, type PromptCard, type YtState,
+  StudyPrompt, canAsk, isShorts, mountPromptCard, setHideCss, videoIdOf, type PromptCard, type YtState,
 } from './youtubeLogic';
 
 const TICK_MS = 1000;
 const RECONNECT_MS = 1000;
 
 let state: YtState = { blocking: false, topic: null, studyVideos: [] };
-// Asks start/time out only while this tab is visible (no slips for tabs nobody is looking at).
-const prompt = new StudyPrompt(() => Date.now(), () => document.visibilityState === 'visible');
+// Asks start/time out only while the card can be seen: tab visible and no fullscreen video
+// (no slips for a prompt nobody could see).
+const prompt = new StudyPrompt(() => Date.now(), () => canAsk(document));
 let card: PromptCard | null = null;
 let ticker: ReturnType<typeof setInterval> | null = null;
 let leaving = false; // redirecting away from Shorts: report once
@@ -104,9 +105,11 @@ function connectPort(): void {
 // YouTube is an SPA: yt-navigate-finish fires after in-app navigations; popstate for back/forward.
 document.addEventListener('yt-navigate-finish', evaluate);
 window.addEventListener('popstate', evaluate);
-document.addEventListener('visibilitychange', () => {
+function onSeeable(): void {
   if (!state.blocking) return;
   if (prompt.onVisibility() === 'show') getCard().show();
   else card?.hide();
-});
+}
+document.addEventListener('visibilitychange', onSeeable);
+document.addEventListener('fullscreenchange', onSeeable);
 connectPort();

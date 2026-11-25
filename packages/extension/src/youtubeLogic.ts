@@ -59,6 +59,14 @@ export function setHideCss(doc: Document, on: boolean): void {
   (doc.head ?? doc.documentElement).appendChild(style);
 }
 
+/**
+ * Whether the "Is this for study?" card can be seen: the tab is visible and no element is
+ * fullscreen (the card is mounted on the page, so a fullscreen video hides it).
+ */
+export function canAsk(doc: { visibilityState: string; fullscreenElement: Element | null }): boolean {
+  return doc.visibilityState === 'visible' && doc.fullscreenElement === null;
+}
+
 type PromptPhase = 'idle' | 'deferred' | 'asking' | 'waiting' | 'done';
 
 /**
