@@ -27,7 +27,7 @@ Pick a pet (a wizard cat, fire fox, bamboo panda, hooded bunny, knight dog or al
 ## Install and run
 
 ```powershell
-git clone https://github.com/<your-username>/hex-my-gpa.git
+git clone https://github.com/JuhiJain06/hex-my-gpa.git
 cd hex-my-gpa
 npm install
 npm run build
