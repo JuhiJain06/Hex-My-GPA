@@ -4,6 +4,8 @@ A cute desktop study pet for Windows that keeps you focused through long study s
 
 Pick a pet (a wizard cat, fire fox, bamboo panda, hooded bunny, knight dog or alchemist hamster). It sits on your taskbar and studies along with you. While you focus it reads and writes, on breaks it relaxes, and when you step away it falls asleep. Its ears and tails move, and a speech bubble shows your timer.
 
+Have fun with your personal study partner.
+
 ## What it does
 
 - **Focus and break rhythm:** 45 min focus / 10 min break, with a longer 25 min break every third time. You can change it in Settings.
